@@ -139,7 +139,11 @@ describe('Groups Actions', () => {
 
       expect(result.success).toBe(true)
       expect(result.groups).toHaveLength(1)
-      expect(result.groups![0].memberCount).toBe(3)
+      expect(result.groups).toBeDefined()
+      if (result.groups && result.groups.length > 0) {
+        const firstGroup = result.groups[0]
+        expect(firstGroup?.memberCount).toBe(3)
+      }
     })
   })
 

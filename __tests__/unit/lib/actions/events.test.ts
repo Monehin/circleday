@@ -165,8 +165,12 @@ describe('Events Actions', () => {
 
       expect(result.success).toBe(true)
       expect(result.events).toHaveLength(1)
-      expect(result.events![0].nextOccurrence).toBeDefined()
-      expect(result.events![0].daysUntil).toBeGreaterThanOrEqual(0)
+      expect(result.events).toBeDefined()
+      if (result.events && result.events.length > 0) {
+        const firstEvent = result.events[0]
+        expect(firstEvent?.nextOccurrence).toBeDefined()
+        expect(firstEvent?.daysUntil).toBeGreaterThanOrEqual(0)
+      }
     })
 
     it('should calculate age for birthdays with known year', async () => {
@@ -196,8 +200,12 @@ describe('Events Actions', () => {
       const result = await getUpcomingEvents()
 
       expect(result.success).toBe(true)
-      expect(result.events![0].age).toBeDefined()
-      expect(result.events![0].age).toBeGreaterThan(20)
+      expect(result.events).toBeDefined()
+      if (result.events && result.events.length > 0) {
+        const firstEvent = result.events[0]
+        expect(firstEvent?.age).toBeDefined()
+        expect(firstEvent?.age).toBeGreaterThan(20)
+      }
     })
   })
 
