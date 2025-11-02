@@ -82,11 +82,12 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
   
   body {
-    @apply bg-background text-foreground;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-feature-settings: 'rlig' 1, 'calt' 1;
   }
   
@@ -97,7 +98,8 @@
   
   /* Focus visible styles */
   *:focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    outline: none;
+    box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--ring));
   }
   
   /* Reduced motion support */
