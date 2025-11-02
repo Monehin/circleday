@@ -2,153 +2,108 @@
 
 Never miss a celebration 🎉
 
-## Documentation
-
-This project has two main planning documents:
-
-### 1. **AGILE_IMPLEMENTATION_PLAN.md** 📋 (Start Here!)
-Your working implementation guide organized by:
-- **Epics** - Large bodies of work
-- **User Stories** - Specific user needs
-- **Tasks** - Technical implementation steps
-
-**Use this for:** Day-to-day development, sprint planning, tracking progress
-
-**Start with:** Sprint 0 → Epic 1 → User Story 1.1
-
 ---
 
-### 2. **PLAN.md** 📚 (Technical Reference)
-Comprehensive technical documentation including:
-- Complete tech stack details
-- Testing strategy (Vitest, RTL, Playwright)
-- Database schema with indexes
-- Infrastructure & security setup
-- Rate limiting configuration
-- Webhook security
-- Caching strategy
-- File structure
-- Design system
-- Production readiness checklist
+## 🎯 Current Status
 
-**Use this for:** Technical details, architecture decisions, configuration examples
-
----
-
-## Current Status - Epic 1: 81% Complete! 🎉
-
-✅ **Application Running:** http://localhost:3000  
-✅ **Tests:** 9/9 passing  
-✅ **Build:** Success  
-✅ **Commits:** 2  
-
-### What's Done ✅
-- Next.js 16.0.1 + React 19.0.0 setup
-- Tailwind CSS 4 with CircleDay theme
-- shadcn/ui components
-- Security headers & CSP
-- Error handling infrastructure
-- Testing framework (Vitest + RTL + Playwright)
-- CI/CD (GitHub Actions)
-- **Complete database schema** (18 models)
-
-### What's Next 📋
-1. **Set up Neon database** (15 min) - See SETUP_GUIDE.md
-2. **Set up Upstash** (10 min) - For rate limiting
-3. **Complete Epic 1** (1-2 hours)
-4. **Start Epic 2: Authentication** (4-6 hours)
-
-See **PROGRESS_SUMMARY.md** for detailed achievements!
-
----
-
-## Tech Stack
-
-**Framework:** Next.js 16 beta, React 19 RC, TypeScript 5.6+  
-**Database:** Neon Postgres + Prisma 6  
-**Auth:** Better Auth 1.0  
-**Queue:** Upstash QStash  
-**Cache:** Upstash Redis  
-**UI:** shadcn/ui + Radix + Tailwind CSS 4 beta  
-**Email:** Resend  
-**Payments:** Stripe  
-**Testing:** Vitest + React Testing Library + Playwright  
-
----
-
-## Development Approach
-
-**Methodology:** Agile with Epics → User Stories → Tasks
-
-**Story Format:** "As a [role], I want [capability], so that [benefit]"
-
-**Story Points:** Fibonacci scale (1, 2, 3, 5, 8, 13)
-
-**Definition of Done:**
-- All acceptance criteria met
-- Tests written and passing
-- Code reviewed
-- Documentation updated
-
----
-
-## Project Status
-
-**Phase:** 🟢 **ACTIVE DEVELOPMENT**  
-**Current Epic:** Epic 1 - Foundation & Infrastructure (56% complete)  
+**Phase:** Epic 1 - Foundation & Infrastructure (81% complete)  
 **Application:** ✅ Running at http://localhost:3000  
-**Last Updated:** 2024-11-02
+**Tests:** ✅ 9/9 passing (100%)  
+**Build:** ✅ Success  
 
-### Quick Status
-- ✅ Next.js 16.0.1 + React 19.0.0 (stable!)
-- ✅ Tailwind CSS 4 configured with CircleDay theme
-- ✅ Security headers active
-- ✅ Error handling infrastructure in place
-- ✅ Health check endpoint working
-- 🟡 Testing infrastructure (pending)
-- 🟡 shadcn/ui components (pending)
+### What's Built
 
-**See IMPLEMENTATION_STATUS.md for detailed progress**
+- ✅ Next.js 16.0.1 + React 19.0.0
+- ✅ Tailwind CSS 4 with CircleDay theme
+- ✅ shadcn/ui components
+- ✅ Security headers & CSP
+- ✅ Error handling infrastructure
+- ✅ Testing framework (Vitest + RTL + Playwright)
+- ✅ CI/CD (GitHub Actions)
+- ✅ Complete database schema (21 models)
+
+### What's Next
+
+1. Set up Neon database (15 min)
+2. Set up Upstash (10 min)
+3. Complete Epic 1 (2-3 hours)
+4. Start Epic 2: Authentication
+
+**See `IMPLEMENTATION_STATUS.md` for detailed progress**
 
 ---
 
-## Running Locally
+## 🚀 Quick Start
 
 ```bash
+# Install dependencies
+npm install
+
 # Start development server
 npm run dev
 
+# Run tests
+npm test
+
 # Build for production
 npm run build
-
-# Run type check
-npm run type-check
-
-# Test health endpoint
-curl http://localhost:3000/api/health
 ```
 
-Application will be available at [http://localhost:3000](http://localhost:3000)
+**Application:** http://localhost:3000  
+**Health Check:** http://localhost:3000/api/health
 
 ---
 
-## Contributing
+## 📚 Documentation
 
-1. Read AGILE_IMPLEMENTATION_PLAN.md for current sprint
-2. Pick a user story
-3. Complete all tasks in the story
-4. Ensure tests pass
-5. Submit for review
+All documentation is in the `/docs` folder:
 
----
+- **`docs/AGILE_IMPLEMENTATION_PLAN.md`** - Epics, User Stories, Tasks (your working guide)
+- **`docs/PLAN.md`** - Comprehensive technical plan, architecture, testing strategy
+- **`docs/TEST_REPORT.md`** - Latest test results
 
-## License
-
-Private - All rights reserved
+**In root:**
+- **`IMPLEMENTATION_STATUS.md`** - Current progress and next steps (check this daily)
 
 ---
 
-**Last Updated:** 2024  
-**Version:** 1.0  
-**Status:** Ready for implementation
+## 🛠️ Tech Stack
 
+**Framework:** Next.js 16.0.1, React 19.0.0, TypeScript 5.6  
+**Database:** Neon Postgres + Prisma 6  
+**Auth:** Better Auth 1.0 (upcoming)  
+**UI:** Tailwind CSS 4 + shadcn/ui  
+**Testing:** Vitest + RTL + Playwright  
+**CI/CD:** GitHub Actions  
+
+---
+
+## 📋 Development
+
+```bash
+# Development
+npm run dev              # Start dev server
+npm run build            # Production build
+npm run type-check       # TypeScript check
+
+# Testing
+npm test                 # Run unit tests
+npm run test:ui          # Test UI
+npm run test:e2e         # E2E tests
+npm run test:all         # All tests
+
+# Database (after setup)
+npx prisma migrate dev   # Run migrations
+npx prisma generate      # Generate client
+npx prisma studio        # Database GUI
+```
+
+---
+
+## 🎯 Next Milestone
+
+**Epic 1 → 100%** then **Epic 2: Authentication**
+
+---
+
+**License:** Private
