@@ -1,12 +1,24 @@
 import { checkDatabaseConnection } from '@/lib/db'
+import { checkRateLimitConnection } from '@/lib/rate-limit/health'
+import { checkQStashConnection } from '@/lib/queue/health'
 
 export async function GET() {
-  // Check database connection
-  const dbHealthy = process.env.DATABASE_URL 
-    ? await checkDatabaseConnection()
-    : null
+  // Check all services
+  const checks = await Promise.all([
+    process.env.DATABASE_URL ? checkDatabaseConnection() : Promise.resolve(null),
+    checkRateLimitConnection(),
+    checkQStashConnection(),
+  ])
+
+  const [dbHealthy, rateLimitHealthy, queueHealthy] = checks
   
+  // System is healthy if database is healthy (critical service)
   const allHealthy = dbHealthy !== false
+  
+  const getServiceStatus = (healthy: boolean | null) => {
+    if (healthy === null) return 'not_configured'
+    return healthy ? 'healthy' : 'unhealthy'
+  }
   
   return Response.json(
     {
@@ -15,8 +27,9 @@ export async function GET() {
       version: '0.1.0',
       env: process.env.NODE_ENV || 'development',
       services: {
-        database: dbHealthy === null ? 'not_configured' : (dbHealthy ? 'healthy' : 'unhealthy'),
-        queue: 'not_configured', // Will implement after QStash setup
+        database: getServiceStatus(dbHealthy),
+        rateLimit: getServiceStatus(rateLimitHealthy),
+        queue: getServiceStatus(queueHealthy),
       },
     },
     { status: allHealthy ? 200 : 503 }
