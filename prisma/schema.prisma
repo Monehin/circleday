@@ -286,6 +286,7 @@ model Suppression {
 model AuditLog {
   id           String    @id @default(cuid())
   actorId      String
+  groupId      String? // Optional - for group-related audits
   method       String // CREATE, UPDATE, DELETE
   entity       String // Group, Event, Contact, etc.
   entityId     String
@@ -294,10 +295,12 @@ model AuditLog {
   createdAt    DateTime  @default(now())
 
   // Relations
-  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  actor User   @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  group Group? @relation(fields: [groupId], references: [id], onDelete: SetNull)
 
   @@index([actorId])
   @@index([actorId, createdAt])
+  @@index([groupId])
   @@index([entity, createdAt])
   @@index([createdAt])
   @@map("audit_logs")

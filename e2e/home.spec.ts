@@ -28,15 +28,18 @@ test.describe('Homepage', () => {
 })
 
 test.describe('Health Check API', () => {
-  test('should return healthy status', async ({ request }) => {
+  test('should return health status', async ({ request }) => {
     const response = await request.get('/api/health')
     
-    expect(response.ok()).toBeTruthy()
+    // May return 200 (ok) or 503 (degraded) depending on database setup
+    expect([200, 503]).toContain(response.status())
     
     const data = await response.json()
-    expect(data.status).toBe('ok')
+    expect(data.status).toMatch(/ok|degraded/)
     expect(data.version).toBe('0.1.0')
     expect(data.env).toBe('development')
+    expect(data.services).toBeDefined()
+    expect(data.services.database).toMatch(/healthy|not_configured/)
   })
 })
 
