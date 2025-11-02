@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useForm } from 'react-hook-form'
+import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -40,18 +40,18 @@ export function AddMemberModal({ groupId, isOpen, onClose, onSuccess }: AddMembe
     formState: { errors },
     setError,
     reset,
-  } = useForm<AddMemberInput>({
+  } = useForm({
     resolver: zodResolver(addMemberSchema),
     defaultValues: {
       name: '',
       email: '',
       phone: '',
       timezone: '',
-      role: 'MEMBER',
+      role: 'MEMBER' as const,
     },
   })
 
-  const onSubmit = async (data: AddMemberInput) => {
+  const onSubmit = async (data: any) => {
     setIsSubmitting(true)
     try {
       const result = await addMember({

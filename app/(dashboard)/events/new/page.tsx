@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useForm } from 'react-hook-form'
+import { useForm, type SubmitHandler } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useSession } from '@/lib/auth/client'
@@ -68,11 +68,11 @@ export default function CreateEventPage() {
     setError,
     setValue,
     watch,
-  } = useForm<CreateEventInput>({
+  } = useForm({
     resolver: zodResolver(createEventSchema),
     defaultValues: {
       contactId: '',
-      type: 'BIRTHDAY',
+      type: 'BIRTHDAY' as const,
       title: '',
       date: '',
       yearKnown: true,
@@ -141,7 +141,7 @@ export default function CreateEventPage() {
     )
   }
 
-  const onSubmit = async (data: CreateEventInput) => {
+  const onSubmit = async (data: any) => {
     setIsCreating(true)
     try {
       const result = await createEvent(data)

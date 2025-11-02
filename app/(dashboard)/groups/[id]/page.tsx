@@ -45,7 +45,7 @@ type GroupMember = {
   }
   user: {
     id: string
-    name: string
+    name: string | null
     email: string
   } | null
   createdAt: Date
@@ -57,7 +57,7 @@ type GroupData = {
   ownerId: string
   owner: {
     id: string
-    name: string
+    name: string | null
     email: string
   }
   defaultTimezone: string
@@ -368,7 +368,7 @@ export default function GroupDetailPage() {
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                         <span className="text-primary font-semibold">
-                          {member.contact.name[0].toUpperCase()}
+                          {(member.contact.name?.[0] || member.contact.email?.[0] || 'U').toUpperCase()}
                         </span>
                       </div>
                       <div>
