@@ -73,22 +73,23 @@ export function AnimatedLogo() {
   }, [])
 
   return (
-    <div className="fixed top-8 left-8 z-50 filter drop-shadow-lg">
+    <div className="fixed top-6 left-6 z-50 filter drop-shadow-2xl">
       <svg
         ref={logoRef}
-        width="240"
-        height="70"
-        viewBox="0 0 240 70"
+        width="280"
+        height="80"
+        viewBox="0 0 280 80"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        className="w-full h-auto"
       >
         {/* Circle group */}
         <g ref={circleGroupRef}>
           {/* Outer glow */}
           <circle 
-            cx="35" 
-            cy="35" 
-            r="28" 
+            cx="40" 
+            cy="40" 
+            r="32" 
             fill="url(#logoGradient)" 
             opacity="0.15"
             filter="url(#glow)"
@@ -96,55 +97,53 @@ export function AnimatedLogo() {
           
           {/* Main circle */}
           <circle 
-            cx="35" 
-            cy="35" 
-            r="22" 
+            cx="40" 
+            cy="40" 
+            r="26" 
             fill="url(#logoGradient)" 
-            opacity="0.9"
+            opacity="0.95"
           />
           
           {/* Ring */}
           <circle 
-            cx="35" 
-            cy="35" 
-            r="18" 
+            cx="40" 
+            cy="40" 
+            r="20" 
             fill="none" 
             stroke="white" 
-            strokeWidth="2.5" 
-            opacity="0.4" 
+            strokeWidth="3" 
+            opacity="0.5" 
           />
           
           {/* Inner circle */}
           <circle 
             ref={innerCircleRef}
-            cx="35" 
-            cy="35" 
-            r="8" 
+            cx="40" 
+            cy="40" 
+            r="10" 
             fill="white"
-            opacity="0.8"
+            opacity="0.9"
           />
         </g>
 
-        {/* Text */}
+        {/* Text - Better spacing and positioning */}
         <g ref={textRef}>
           <text
-            x="75"
-            y="45"
             className="font-display"
-            fontSize="32"
-            fontWeight="700"
+            fontSize="36"
+            fontWeight="800"
             fill="url(#textGradient)"
-            letterSpacing="1"
+            letterSpacing="2"
           >
-            <tspan>C</tspan>
-            <tspan dx="2">i</tspan>
-            <tspan dx="2">r</tspan>
-            <tspan dx="2">c</tspan>
-            <tspan dx="2">l</tspan>
-            <tspan dx="2">e</tspan>
-            <tspan dx="6">D</tspan>
-            <tspan dx="2">a</tspan>
-            <tspan dx="2">y</tspan>
+            <tspan x="88" y="52">C</tspan>
+            <tspan dx="3">i</tspan>
+            <tspan dx="3">r</tspan>
+            <tspan dx="3">c</tspan>
+            <tspan dx="3">l</tspan>
+            <tspan dx="3">e</tspan>
+            <tspan dx="8">D</tspan>
+            <tspan dx="3">a</tspan>
+            <tspan dx="3">y</tspan>
           </text>
         </g>
 
@@ -160,7 +159,7 @@ export function AnimatedLogo() {
             <stop offset="100%" stopColor="hsl(18 100% 61%)" />
           </linearGradient>
           <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="4" />
+            <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
           </filter>
         </defs>
       </svg>
