@@ -8,17 +8,15 @@ test.describe('Homepage', () => {
     await expect(page).toHaveTitle(/CircleDay/)
     
     // Check main heading contains key text
-    const heading = page.locator('h1')
+    const heading = page.getByRole('heading', { name: /Never miss a celebration/i })
     await expect(heading).toBeVisible()
-    await expect(heading).toContainText('Never miss')
-    await expect(heading).toContainText('celebration')
     
     // Check for feature cards
     await expect(page.locator('text=Smart reminders')).toBeVisible()
     await expect(page.locator('text=Group coordination')).toBeVisible()
     
-    // Check CTA section
-    await expect(page.locator('text=Start celebrating')).toBeVisible()
+    // Check CTA section (scope to link to avoid heading match)
+    await expect(page.getByRole('link', { name: 'Start celebrating' })).toBeVisible()
   })
   
   test('should have proper security headers', async ({ page }) => {

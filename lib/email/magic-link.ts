@@ -6,6 +6,19 @@ export async function sendMagicLinkEmail(
   url: string,
   token: string
 ): Promise<void> {
+  // Development mode: log magic link to console
+  if (process.env.NODE_ENV === 'development') {
+    console.log('\n🔐 ===== MAGIC LINK EMAIL =====')
+    console.log('📧 To:', email)
+    console.log('🔗 Link:', url)
+    console.log('🎫 Token:', token)
+    console.log('=============================\n')
+    console.log('👆 Copy the link above and paste it in your browser to sign in')
+    console.log('')
+    return
+  }
+
+  // Production mode: send via Resend
   try {
     await resend.emails.send({
       from: FROM_EMAIL,

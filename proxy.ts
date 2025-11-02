@@ -1,6 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export default function proxy(request: NextRequest) {
+// Protected routes that require authentication
+const protectedRoutes = ['/dashboard', '/groups', '/settings', '/profile']
+
+// Public routes that should redirect to dashboard if authenticated
+const authRoutes = ['/login', '/signup']
+
+export default async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+  
+  // Check for Better Auth session cookie
+  const sessionToken = request.cookies.get('better-auth.session_token')
+  const isAuthenticated = !!sessionToken?.value
+  
+  // Redirect authenticated users away from auth pages
+  if (isAuthenticated && authRoutes.some(route => pathname.startsWith(route))) {
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+  
+  // Redirect unauthenticated users to login
+  if (!isAuthenticated && protectedRoutes.some(route => pathname.startsWith(route))) {
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirectTo', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+  
   const response = NextResponse.next()
   
   // Security headers
