@@ -7,16 +7,18 @@ test.describe('Homepage', () => {
     // Check title
     await expect(page).toHaveTitle(/CircleDay/)
     
-    // Check main heading
+    // Check main heading contains key text
     const heading = page.locator('h1')
     await expect(heading).toBeVisible()
-    await expect(heading).toHaveText('CircleDay')
+    await expect(heading).toContainText('Never miss')
+    await expect(heading).toContainText('celebration')
     
-    // Check tagline
-    await expect(page.locator('text=Never miss a celebration')).toBeVisible()
+    // Check for feature cards
+    await expect(page.locator('text=Smart reminders')).toBeVisible()
+    await expect(page.locator('text=Group coordination')).toBeVisible()
     
-    // Check version info
-    await expect(page.locator('text=Running on Next.js 16')).toBeVisible()
+    // Check CTA section
+    await expect(page.locator('text=Start celebrating')).toBeVisible()
   })
   
   test('should have proper security headers', async ({ page }) => {
