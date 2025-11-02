@@ -13,7 +13,7 @@ const fadeIn = {
   visible: { opacity: 1, y: 0 }
 }
 
-export default function LoginPage() {
+function VerifyContent() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [isSent, setIsSent] = useState(false)
@@ -136,10 +136,11 @@ export default function LoginPage() {
           </CardContent>
         </Card>
 
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          By continuing, you agree to our Terms of Service and Privacy Policy
-        </p>
       </motion.div>
     </div>
   )
+}
+
+export default function LoginPage() {
+  return <VerifyContent />
 }
