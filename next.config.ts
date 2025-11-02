@@ -3,7 +3,8 @@ import type { NextConfig } from 'next'
 const config: NextConfig = {
   reactStrictMode: true,
   
-  typedRoutes: true,
+  // Disable typedRoutes during development while routes are being built
+  typedRoutes: false,
   
   async headers() {
     return [
