@@ -39,6 +39,18 @@ function validateEnv(): Env {
   const parsed = envSchema.safeParse(process.env)
   
   if (!parsed.success) {
+    // In test environment, return defaults rather than throwing
+    if (process.env.NODE_ENV === 'test') {
+      console.warn('⚠️  Using default environment values in test mode')
+      return parsed.error.issues.reduce((acc, issue) => {
+        return acc
+      }, envSchema.parse({
+        NODE_ENV: 'test',
+        NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+        NEXT_PUBLIC_SHORT_DOMAIN: 'localhost:3000',
+      }))
+    }
+    
     console.error('❌ Invalid environment variables:')
     console.error(parsed.error.flatten().fieldErrors)
     throw new Error('Invalid environment variables')
