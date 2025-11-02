@@ -76,9 +76,9 @@ export function AnimatedLogo() {
     <div className="absolute top-6 left-6 z-50 filter drop-shadow-2xl">
       <svg
         ref={logoRef}
-        width="280"
+        width="320"
         height="80"
-        viewBox="0 0 280 80"
+        viewBox="0 0 320 80"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
         className="w-full h-auto"
@@ -126,24 +126,24 @@ export function AnimatedLogo() {
           />
         </g>
 
-        {/* Text - Solid color, better spacing and positioning */}
+        {/* Text - Solid color, full width with proper spacing */}
         <g ref={textRef}>
           <text
             className="font-display"
             fontSize="36"
             fontWeight="800"
             fill="hsl(222 47% 11%)"
-            letterSpacing="2"
+            letterSpacing="1.5"
           >
             <tspan x="88" y="52">C</tspan>
-            <tspan dx="3">i</tspan>
-            <tspan dx="3">r</tspan>
-            <tspan dx="3">c</tspan>
-            <tspan dx="3">l</tspan>
-            <tspan dx="3">e</tspan>
-            <tspan dx="8">D</tspan>
-            <tspan dx="3">a</tspan>
-            <tspan dx="3">y</tspan>
+            <tspan>i</tspan>
+            <tspan>r</tspan>
+            <tspan>c</tspan>
+            <tspan>l</tspan>
+            <tspan>e</tspan>
+            <tspan dx="6">D</tspan>
+            <tspan>a</tspan>
+            <tspan>y</tspan>
           </text>
         </g>
 
