@@ -28,7 +28,7 @@ jobs:
         run: npm run test:coverage
       
       - name: Upload coverage
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         if: always()
         with:
           files: ./coverage/coverage-final.json
@@ -55,7 +55,7 @@ jobs:
         run: npm run test:e2e -- --project=chromium
       
       - name: Upload Playwright report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
