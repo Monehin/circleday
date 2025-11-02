@@ -11,11 +11,11 @@
 | Metric | Value | Status |
 |--------|-------|--------|
 | **Application** | http://localhost:3000 | ✅ Running |
-| **Tests** | 11/11 passing | ✅ 100% |
+| **Tests** | 47/47 passing | ✅ 100% |
 | **Build** | 1.2s | ✅ Success |
 | **Type Check** | Pass | ✅ |
 | **Vulnerabilities** | 0 | ✅ |
-| **Commits** | 9 | ✅ |
+| **Commits** | 11 | ✅ |
 | **Database** | Neon Postgres | ✅ Healthy |
 | **Rate Limit** | Upstash Redis | ✅ Healthy |
 | **Queue** | Upstash QStash | ✅ Healthy |
@@ -111,18 +111,23 @@
 **Latest Run:** 2024-11-02
 
 ```
-Unit Tests:    11/11 passing ✅
+Unit Tests:    38/38 passing ✅
+Integration:   6/6 passing ✅
 E2E Tests:     3/3 passing ✅
 Type Check:    PASS ✅
 Build:         SUCCESS ✅
 ───────────────────────────────
-Total:         14/14 (100%) ✅
+Total:         47/47 (100%) ✅
 ```
 
 **Test Files:**
 - `__tests__/unit/lib/utils.test.ts` (4 tests)
 - `__tests__/unit/lib/env.test.ts` (2 tests)
-- `__tests__/unit/lib/rate-limit.test.ts` (5 tests) ← NEW
+- `__tests__/unit/lib/rate-limit.test.ts` (5 tests)
+- `__tests__/unit/lib/errors/error-handler.test.ts` (10 tests) ← NEW
+- `__tests__/unit/components/ui/button.test.tsx` (7 tests) ← NEW
+- `__tests__/unit/middleware.test.ts` (4 tests) ← NEW
+- `__tests__/integration/database.test.ts` (6 tests) ← NEW
 - `e2e/home.spec.ts` (3 tests)
 
 ---
