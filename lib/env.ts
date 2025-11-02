@@ -16,6 +16,16 @@ const envSchema = z.object({
   BETTER_AUTH_SECRET: z.string().min(32).optional(),
   BETTER_AUTH_URL: z.string().url().optional(),
   
+  // Upstash Redis (optional for development, required for production)
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+  
+  // QStash (optional for now, required when scheduling is set up)
+  QSTASH_URL: z.string().url().optional(),
+  QSTASH_TOKEN: z.string().optional(),
+  QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
+  QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
+  
   // Feature flags
   ENABLE_SMS: z.string().default('false'),
   ENABLE_GIFTING: z.string().default('false'),

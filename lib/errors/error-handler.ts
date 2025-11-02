@@ -1,5 +1,8 @@
 import { ErrorCode, ErrorMessages } from './error-types'
 
+// Re-export ErrorCode for convenience
+export { ErrorCode }
+
 export class AppError extends Error {
   constructor(
     public code: ErrorCode,
