@@ -11,67 +11,22 @@ export function AnimatedLogo() {
   useEffect(() => {
     if (!containerRef.current || !iconRef.current || !textRef.current) return
 
-    // Playful entrance animation
-    const tl = gsap.timeline({ delay: 0.2 })
-
-    // Icon bounces in with rotation
-    tl.fromTo(iconRef.current,
-      { scale: 0, rotation: -180, opacity: 0 },
-      { 
-        scale: 1, 
-        rotation: 0, 
-        opacity: 1, 
-        duration: 0.8, 
-        ease: 'elastic.out(1, 0.5)' 
-      }
-    )
-
-    // Text bounces in with slight delay
-    tl.fromTo(textRef.current,
-      { opacity: 0, y: 20, scale: 0.8 },
+    // Simple, elegant entrance
+    gsap.fromTo(containerRef.current,
+      { opacity: 0, y: -10 },
       { 
         opacity: 1, 
         y: 0, 
-        scale: 1, 
         duration: 0.6, 
-        ease: 'back.out(1.7)' 
-      },
-      '-=0.4'
+        ease: 'power2.out',
+        delay: 0.3
+      }
     )
 
-    // === Continuous Playful Animations ===
-
-    // Heartbeat effect - pulsing scale
+    // Very subtle continuous pulse on icon only
     gsap.to(iconRef.current, {
-      scale: 1.15,
-      duration: 0.3,
-      ease: 'power2.inOut',
-      repeat: -1,
-      repeatDelay: 0.5,
-      yoyo: true
-    })
-
-    // Gentle rotation
-    gsap.to(iconRef.current, {
-      rotation: 360,
-      duration: 20,
-      ease: 'none',
-      repeat: -1
-    })
-
-    // Bouncy float
-    gsap.to(containerRef.current, {
-      y: -8,
+      scale: 1.05,
       duration: 2,
-      ease: 'sine.inOut',
-      repeat: -1,
-      yoyo: true
-    })
-
-    // Subtle wiggle
-    gsap.to(containerRef.current, {
-      rotation: 2,
-      duration: 3,
       ease: 'sine.inOut',
       repeat: -1,
       yoyo: true
