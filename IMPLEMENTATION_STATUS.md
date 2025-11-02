@@ -40,7 +40,7 @@
 
 **US-1.3: Security Infrastructure** (100%)
 - Security headers (X-Frame-Options, CSP, HSTS)
-- Middleware protecting all routes
+- Proxy (Next.js 16) protecting all routes
 - Production-ready configuration
 
 **US-1.4: Error Handling System** (85%)
@@ -148,11 +148,13 @@ circleday/
 ├── lib/                       🔧 Utilities
 │   ├── db/                   (Prisma client)
 │   ├── errors/               (Error handling)
-│   └── ...
+│   ├── rate-limit/           (Rate limiting)
+│   └── queue/                (QStash health)
 ├── prisma/                    🗄️ Database
 │   └── schema.prisma         (21 models)
-├── __tests__/                 🧪 Tests
-└── e2e/                       🎭 E2E tests
+├── __tests__/                 🧪 Tests (unit + integration)
+├── e2e/                       🎭 E2E tests
+└── proxy.ts                   🔒 Security headers (Next.js 16)
 ```
 
 ---
