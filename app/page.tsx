@@ -4,207 +4,146 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { fadeIn, slideUp, staggerContainer, staggerItem } from '@/lib/animations/variants'
+
+const fadeIn = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+}
+
+const stagger = {
+  visible: { transition: { staggerChildren: 0.1 } }
+}
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-primary/5 to-background">
+    <div className="min-h-screen bg-white">
+      {/* Subtle Background Pattern */}
+      <div className="fixed inset-0 opacity-[0.02]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.5) 1px, transparent 0)',
+          backgroundSize: '40px 40px'
+        }} />
+      </div>
+
       {/* Hero Section */}
       <motion.section 
-        className="relative overflow-hidden px-6 pt-20 pb-16 sm:px-8 lg:px-12"
-        initial="initial"
-        animate="animate"
-        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+        variants={stagger}
+        className="relative overflow-hidden px-6 py-32 sm:px-8 lg:px-12"
       >
         <div className="mx-auto max-w-6xl">
-          {/* Hero Content */}
-          <motion.div className="text-center" variants={staggerItem}>
-            <motion.div 
-              className="mb-6 inline-block"
-              whileHover={{ scale: 1.05, rotate: [0, -5, 5, 0] }}
-              transition={{ duration: 0.3 }}
-            >
-              <span className="text-6xl">🎉</span>
-            </motion.div>
-            
-            <motion.h1 
-              className="font-display text-5xl font-bold tracking-tight text-foreground sm:text-6xl lg:text-7xl mb-6"
-              variants={slideUp}
-            >
-              Never miss a{' '}
-              <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent animate-gradient">
-                celebration
+          <motion.div variants={fadeIn} className="text-center max-w-3xl mx-auto">
+            <div className="mb-8 inline-block px-4 py-1.5 bg-primary/5 rounded-full border border-primary/10">
+              <span className="text-sm font-medium text-primary">
+                Never miss what matters
               </span>
-            </motion.h1>
+            </div>
             
-            <motion.p 
-              className="mx-auto max-w-2xl text-xl text-muted-foreground mb-8"
-              variants={slideUp}
-            >
-              CircleDay helps you remember birthdays, anniversaries, and special moments with the people you care about.
-              Beautiful reminders, perfect timing, celebrated together.
-            </motion.p>
+            <h1 className="font-display text-6xl font-bold tracking-tight text-foreground mb-6 leading-tight">
+              Celebrate every
+              <span className="block text-primary mt-2">special moment</span>
+            </h1>
             
-            <motion.div 
-              className="flex gap-4 justify-center flex-wrap"
-              variants={slideUp}
-            >
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button asChild size="lg" className="text-lg px-8 h-14 shadow-lifted">
-                  <Link href="/login">
-                    Get Started Free
-                  </Link>
-                </Button>
-              </motion.div>
-              
-              <motion.div
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button asChild variant="outline" size="lg" className="text-lg px-8 h-14">
-                  <Link href="/login">
-                    Sign In
-                  </Link>
-                </Button>
-              </motion.div>
-            </motion.div>
-          </motion.div>
-
-          {/* Feature Cards */}
-          <motion.div 
-            className="mt-24 grid gap-8 sm:grid-cols-2 lg:grid-cols-3"
-            variants={staggerContainer}
-          >
-            {[
-              {
-                icon: '🎂',
-                title: 'Remember Everything',
-                description: 'Track birthdays, anniversaries, and custom events. Never forget who matters most.',
-              },
-              {
-                icon: '⏰',
-                title: 'Perfect Timing',
-                description: 'Timezone-aware reminders delivered at just the right moment, wherever you are.',
-              },
-              {
-                icon: '👥',
-                title: 'Celebrate Together',
-                description: 'Organize groups, share wishes, and coordinate celebrations effortlessly.',
-              },
-              {
-                icon: '💌',
-                title: 'Beautiful Messages',
-                description: 'Thoughtfully designed emails and SMS with story prompts to inspire meaningful messages.',
-              },
-              {
-                icon: '🎁',
-                title: 'One-Tap Gifting',
-                description: 'Send coffee, treats, or group gifts in seconds. Simple, thoughtful, delightful.',
-              },
-              {
-                icon: '🔒',
-                title: 'Private & Secure',
-                description: 'Your celebrations, your data. Enterprise-grade security with magic link authentication.',
-              },
-            ].map((feature, index) => (
-              <motion.div key={index} variants={staggerItem}>
-                <motion.div
-                  whileHover="hover"
-                  variants={{
-                    hover: { y: -8, boxShadow: '0 20px 60px rgba(0,0,0,0.12)' }
-                  }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                >
-                  <Card className="p-6 h-full border-border/50 bg-card/50 backdrop-blur-sm hover:border-primary/20 transition-colors">
-                    <motion.div 
-                      className="text-4xl mb-4"
-                      whileHover={{ scale: 1.2, rotate: [0, -10, 10, 0] }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      {feature.icon}
-                    </motion.div>
-                    <h3 className="text-xl font-semibold mb-2 text-foreground">
-                      {feature.title}
-                    </h3>
-                    <p className="text-muted-foreground leading-relaxed">
-                      {feature.description}
-                    </p>
-                  </Card>
-                </motion.div>
-              </motion.div>
-            ))}
+            <p className="text-xl text-muted-foreground mb-12 leading-relaxed">
+              Elegant reminder system for birthdays, anniversaries, and 
+              meaningful occasions. Never forget who matters most.
+            </p>
+            
+            <div className="flex gap-4 justify-center">
+              <Button asChild size="lg" className="px-8">
+                <Link href="/login">Get Started</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="px-8">
+                <Link href="/login">Sign In</Link>
+              </Button>
+            </div>
           </motion.div>
         </div>
-
-        {/* Decorative gradient orbs */}
-        <div className="absolute top-0 left-1/4 -z-10 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 -z-10 h-96 w-96 rounded-full bg-accent/10 blur-3xl" />
       </motion.section>
 
-      {/* How it Works Section */}
+      {/* Features Grid */}
       <motion.section 
-        className="px-6 py-20 sm:px-8 lg:px-12 bg-muted/30"
-        initial="initial"
-        whileInView="animate"
+        initial="hidden"
+        whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
-        variants={staggerContainer}
+        variants={stagger}
+        className="px-6 py-24 sm:px-8 lg:px-12 bg-muted/30"
       >
         <div className="mx-auto max-w-6xl">
-          <motion.div className="text-center mb-16" variants={slideUp}>
-            <h2 className="font-display text-4xl font-bold mb-4">
-              How CircleDay Works
+          <motion.div variants={fadeIn} className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
+              Designed for what matters
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Three simple steps to never miss a celebration
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Thoughtfully crafted to help you maintain meaningful connections
             </p>
           </motion.div>
 
-          <div className="grid gap-12 lg:grid-cols-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
-                step: '1',
-                title: 'Add Your Circle',
-                description: 'Create groups for family, friends, or teams. Add important dates in seconds.',
-                emoji: '👨‍👩‍👧‍👦',
+                title: 'Smart Reminders',
+                description: 'Timezone-aware notifications delivered at the perfect moment, wherever you are in the world.'
               },
               {
-                step: '2',
-                title: 'Get Reminded',
-                description: 'Receive beautiful, timely reminders via email and SMS. Always at the perfect moment.',
-                emoji: '📬',
+                title: 'Group Coordination',
+                description: 'Organize celebrations with family and friends. Share wishes and coordinate seamlessly.'
               },
               {
-                step: '3',
-                title: 'Celebrate Together',
-                description: 'Send wishes, share memories, or gift with one tap. Make every moment special.',
-                emoji: '🎊',
-              },
-            ].map((step, index) => (
-              <motion.div
-                key={index}
-                className="relative"
-                variants={staggerItem}
-              >
-                <motion.div
-                  className="text-center"
-                  whileHover={{ scale: 1.05 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
-                >
-                  <div className="relative inline-block mb-6">
-                    <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl" />
-                    <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground text-3xl font-bold mx-auto shadow-lifted">
-                      {step.step}
-                    </div>
+                title: 'Secure & Private',
+                description: 'Your data stays yours. Enterprise-grade security with magic link authentication.'
+              }
+            ].map((feature, i) => (
+              <motion.div key={i} variants={fadeIn}>
+                <Card className="p-8 h-full border-border/50 bg-card/50 hover:border-primary/20 transition-all duration-300 hover:shadow-lifted">
+                  <div className="h-12 w-12 rounded-lg bg-primary/10 mb-6 flex items-center justify-center">
+                    <div className="w-6 h-6 rounded bg-primary/20" />
                   </div>
-                  <div className="text-5xl mb-4">{step.emoji}</div>
-                  <h3 className="text-2xl font-semibold mb-3">{step.title}</h3>
+                  <h3 className="text-xl font-semibold mb-3 text-foreground">
+                    {feature.title}
+                  </h3>
                   <p className="text-muted-foreground leading-relaxed">
-                    {step.description}
+                    {feature.description}
                   </p>
-                </motion.div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.section>
+
+      {/* Process Section */}
+      <motion.section 
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={stagger}
+        className="px-6 py-24 sm:px-8 lg:px-12"
+      >
+        <div className="mx-auto max-w-5xl">
+          <motion.div variants={fadeIn} className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-foreground mb-4">
+              Simple, elegant workflow
+            </h2>
+          </motion.div>
+
+          <div className="space-y-12">
+            {[
+              { number: '01', title: 'Add your circle', description: 'Import or add birthdays, anniversaries, and special dates' },
+              { number: '02', title: 'Set preferences', description: 'Customize timing, message templates, and notification channels' },
+              { number: '03', title: 'Stay connected', description: 'Receive timely reminders and never miss a special moment' }
+            ].map((step, i) => (
+              <motion.div key={i} variants={fadeIn} className="flex items-start gap-8">
+                <div className="flex-shrink-0">
+                  <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <span className="text-2xl font-bold text-primary">{step.number}</span>
+                  </div>
+                </div>
+                <div className="flex-1 pt-2">
+                  <h3 className="text-2xl font-semibold mb-2 text-foreground">{step.title}</h3>
+                  <p className="text-lg text-muted-foreground">{step.description}</p>
+                </div>
               </motion.div>
             ))}
           </div>
@@ -213,38 +152,24 @@ export default function Home() {
 
       {/* CTA Section */}
       <motion.section 
-        className="px-6 py-20 sm:px-8 lg:px-12"
-        initial="initial"
-        whileInView="animate"
+        initial="hidden"
+        whileInView="visible"
         viewport={{ once: true }}
         variants={fadeIn}
+        className="px-6 py-24 sm:px-8 lg:px-12 bg-primary/5"
       >
-        <div className="mx-auto max-w-4xl">
-          <motion.div 
-            className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-accent to-primary p-12 text-center shadow-floating"
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: 'spring', stiffness: 300 }}
-          >
-            <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
-            <div className="relative">
-              <h2 className="font-display text-4xl font-bold text-white mb-4">
-                Start Celebrating Today
-              </h2>
-              <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-                Join CircleDay and never miss another special moment. Free to start, delightful to use.
-              </p>
-              <motion.div
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button asChild size="lg" variant="secondary" className="text-lg px-8 h-14 shadow-xl">
-                  <Link href="/login">
-                    Create Your Free Account →
-                  </Link>
-                </Button>
-              </motion.div>
-            </div>
-          </motion.div>
+        <div className="mx-auto max-w-4xl text-center">
+          <h2 className="text-4xl font-bold text-foreground mb-4">
+            Ready to get started?
+          </h2>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Join CircleDay today and never miss another meaningful moment.
+          </p>
+          <Button asChild size="lg" className="px-8">
+            <Link href="/login">
+              Create your account
+            </Link>
+          </Button>
         </div>
       </motion.section>
 
@@ -252,12 +177,9 @@ export default function Home() {
       <footer className="border-t border-border/50 px-6 py-12 sm:px-8 lg:px-12">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🎉</span>
-              <span className="font-semibold text-lg">CircleDay</span>
-            </div>
+            <div className="font-semibold text-lg">CircleDay</div>
             <p className="text-sm text-muted-foreground">
-              Built with ❤️ using Next.js 16 + React 19
+              © 2024 CircleDay. All rights reserved.
             </p>
           </div>
         </div>
