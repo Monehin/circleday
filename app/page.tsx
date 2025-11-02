@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { AnimatedLogo } from '@/components/AnimatedLogo'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
@@ -17,6 +18,9 @@ const stagger = {
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-primary/[0.02] to-white">
+      {/* Animated Logo */}
+      <AnimatedLogo />
+      
       {/* Decorative Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-20 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
