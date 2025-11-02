@@ -17,6 +17,7 @@
     "test:all": "vitest run && playwright test"
   },
   "dependencies": {
+    "@prisma/client": "^6.18.0",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "class-variance-authority": "^0.7.1",
@@ -46,6 +47,7 @@
     "msw": "^2.11.6",
     "playwright": "^1.56.1",
     "postcss": "^8.5.6",
+    "prisma": "^6.18.0",
     "tailwindcss": "^4.1.16",
     "typescript": "^5.6",
     "vitest": "^4.0.6"

@@ -1,0 +1,561 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ============================================================================
+// PHASE 1: Core Models
+// ============================================================================
+
+model User {
+  id               String    @id @default(cuid())
+  name             String?
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  emailVerifiedAt  DateTime?
+  phone            String?   @unique
+  phoneVerified    Boolean   @default(false)
+  phoneVerifiedAt  DateTime?
+  defaultTimezone  String    @default("UTC")
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+  lastLoginAt      DateTime?
+
+  // Relations
+  sessions          Session[]
+  accounts          Account[]
+  ownedGroups       Group[]           @relation("GroupOwner")
+  memberships       Membership[]
+  auditLogs         AuditLog[]
+  verificationCodes VerificationCode[]
+  proposedChanges   ProposedChange[]  @relation("ProposedBy")
+  orders            Order[]
+  potContributions  PotContribution[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// Better Auth Models
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  userId    String
+  code      String
+  type      String // EMAIL_OTP, SMS_OTP, STEP_UP
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type])
+  @@index([expiresAt])
+  @@map("verification_codes")
+}
+
+model Group {
+  id              String    @id @default(cuid())
+  name            String
+  ownerId         String
+  defaultTimezone String    @default("UTC")
+  quietHours      Json? // { start: "08:00", end: "20:00" }
+  leapDayPolicy   String    @default("FEB_28") // FEB_28 or MAR_01
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // Relations
+  owner          User             @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  memberships    Membership[]
+  reminderRules  ReminderRule[]
+  inviteLinks    InviteLink[]
+  auditLogs      AuditLog[]
+
+  @@index([ownerId])
+  @@index([ownerId, createdAt])
+  @@index([deletedAt])
+  @@map("groups")
+}
+
+model Membership {
+  id        String    @id @default(cuid())
+  groupId   String
+  userId    String?
+  contactId String
+  role      MemberRole @default(MEMBER)
+  status    MembershipStatus @default(ACTIVE)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  group   Group   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, contactId])
+  @@index([groupId])
+  @@index([userId])
+  @@index([groupId, userId])
+  @@index([groupId, status])
+  @@map("memberships")
+}
+
+model Contact {
+  id          String    @id @default(cuid())
+  name        String
+  email       String?
+  phone       String?
+  timezone    String?
+  photoUrl    String?
+  locked      Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  memberships      Membership[]
+  events           Event[]
+  proposedChanges  ProposedChange[]
+  orders           Order[]          @relation("OrderCelebrant")
+  pots             Pot[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([deletedAt])
+  @@map("contacts")
+}
+
+model Event {
+  id        String    @id @default(cuid())
+  contactId String
+  type      EventType
+  title     String? // Custom title for CUSTOM events
+  date      DateTime // Store as MM-DD (year optional for birthdays)
+  yearKnown Boolean   @default(true)
+  repeat    Boolean   @default(true)
+  notes     String? // Story seeds
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  contact        Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  scheduledSends ScheduledSend[]
+  wishWallMessages WishWallMessage[]
+  nudgeCircles   NudgeCircle[]
+  pots           Pot[]
+
+  @@index([contactId])
+  @@index([contactId, type])
+  @@index([date])
+  @@index([deletedAt])
+  @@map("events")
+}
+
+model ReminderRule {
+  id        String   @id @default(cuid())
+  groupId   String
+  offsets   Int[] // [-7, -1, 0] for T-7, T-1, T-0
+  channels  Json // { "-7": ["EMAIL"], "-1": ["EMAIL", "SMS"], "0": ["EMAIL", "SMS"] }
+  sendHour  Int      @default(9) // Send at 09:00 local time
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("reminder_rules")
+}
+
+model ScheduledSend {
+  id             String     @id @default(cuid())
+  eventId        String
+  targetDate     DateTime // The actual event date (YYYY-MM-DD)
+  offset         Int // -7, -1, 0
+  channel        ChannelType
+  dueAtUtc       DateTime // When to send (UTC)
+  status         SendStatus @default(PENDING)
+  idempotencyKey String     @unique
+  sentAt         DateTime?
+  failedAt       DateTime?
+  retryCount     Int        @default(0)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  // Relations
+  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  sendLogs SendLog[]
+
+  @@index([dueAtUtc, status])
+  @@index([status, dueAtUtc])
+  @@index([eventId])
+  @@index([eventId, targetDate])
+  @@index([idempotencyKey])
+  @@index([status])
+  @@map("scheduled_sends")
+}
+
+model SendLog {
+  id                  String   @id @default(cuid())
+  scheduledSendId     String
+  provider            String // "resend", "twilio"
+  providerMessageId   String?
+  status              SendStatus
+  error               String?
+  deliveredAt         DateTime?
+  bouncedAt           DateTime?
+  createdAt           DateTime @default(now())
+
+  // Relations
+  scheduledSend ScheduledSend @relation(fields: [scheduledSendId], references: [id], onDelete: Cascade)
+
+  @@index([scheduledSendId])
+  @@index([provider, status])
+  @@index([createdAt])
+  @@map("send_logs")
+}
+
+model Suppression {
+  id         String      @id @default(cuid())
+  channel    ChannelType
+  identifier String // email or phone
+  reason     String // BOUNCE, COMPLAINT, UNSUBSCRIBE, STOP
+  createdAt  DateTime    @default(now())
+
+  @@unique([identifier, channel])
+  @@index([identifier, channel])
+  @@index([channel])
+  @@map("suppressions")
+}
+
+model AuditLog {
+  id           String    @id @default(cuid())
+  actorId      String
+  method       String // CREATE, UPDATE, DELETE
+  entity       String // Group, Event, Contact, etc.
+  entityId     String
+  diffJson     Json? // { old: {}, new: {} }
+  rolledBackAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([actorId])
+  @@index([actorId, createdAt])
+  @@index([entity, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// PHASE 2: Multi-Channel & Engagement
+// ============================================================================
+
+model WishWallMessage {
+  id          String    @id @default(cuid())
+  eventId     String
+  authorName  String
+  message     String // max 280 chars
+  emoji       String?
+  moderatedAt DateTime?
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([createdAt])
+  @@map("wish_wall_messages")
+}
+
+// ============================================================================
+// PHASE 3: Collaboration & Security
+// ============================================================================
+
+model InviteLink {
+  id           String    @id @default(cuid())
+  groupId      String
+  membershipId String?
+  tokenHash    String    @unique // SHA-256 hash
+  purpose      LinkPurpose
+  expiresAt    DateTime
+  maxUses      Int       @default(1)
+  usedCount    Int       @default(0)
+  passcode     String? // For group open links
+  createdBy    String
+  createdAt    DateTime  @default(now())
+
+  // Relations
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@index([tokenHash])
+  @@index([expiresAt])
+  @@map("invite_links")
+}
+
+model ProposedChange {
+  id          String    @id @default(cuid())
+  contactId   String
+  proposedBy  String
+  changesJson Json // { field: newValue, ... }
+  status      ProposalStatus @default(PENDING)
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  contact  Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  proposer User    @relation("ProposedBy", fields: [proposedBy], references: [id], onDelete: Cascade)
+
+  @@index([contactId])
+  @@index([proposedBy])
+  @@index([status, createdAt])
+  @@map("proposed_changes")
+}
+
+model NudgeCircle {
+  id           String   @id @default(cuid())
+  eventId      String
+  members      String[] // Array of contactIds
+  deadlineHour Int      @default(18)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("nudge_circles")
+}
+
+model NudgeAck {
+  id         String   @id @default(cuid())
+  eventId    String
+  targetDate DateTime
+  ackedBy    String // contactId
+  ackedAt    DateTime @default(now())
+
+  @@index([eventId, targetDate])
+  @@map("nudge_acks")
+}
+
+// ============================================================================
+// PHASE 4: Payments & Gifting
+// ============================================================================
+
+model Order {
+  id                    String      @id @default(cuid())
+  buyerId               String
+  celebrantContactId    String
+  type                  OrderType
+  amount                Int // in cents
+  currency              String      @default("USD")
+  status                OrderStatus @default(PENDING)
+  stripePaymentIntentId String?     @unique
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+  refundedAt            DateTime?
+
+  // Relations
+  buyer     User      @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+  celebrant Contact   @relation("OrderCelebrant", fields: [celebrantContactId], references: [id], onDelete: Cascade)
+  items     OrderItem[]
+
+  @@index([buyerId])
+  @@index([buyerId, createdAt])
+  @@index([status, createdAt])
+  @@index([stripePaymentIntentId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  sku     String
+  label   String
+  amount  Int // in cents
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Pot {
+  id                 String      @id @default(cuid())
+  eventId            String
+  celebrantContactId String
+  currency           String      @default("USD")
+  goalAmount         Int? // in cents, optional
+  deadlineAtUtc      DateTime
+  status             PotStatus   @default(OPEN)
+  createdBy          String
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  fulfilledAt        DateTime?
+
+  // Relations
+  event         Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  celebrant     Contact           @relation(fields: [celebrantContactId], references: [id], onDelete: Cascade)
+  contributions PotContribution[]
+
+  @@index([eventId])
+  @@index([status, deadlineAtUtc])
+  @@index([createdBy])
+  @@map("pots")
+}
+
+model PotContribution {
+  id                    String              @id @default(cuid())
+  potId                 String
+  buyerId               String
+  amount                Int // in cents
+  stripePaymentIntentId String              @unique
+  status                ContributionStatus  @default(PENDING)
+  message               String?
+  createdAt             DateTime            @default(now())
+
+  // Relations
+  pot   Pot  @relation(fields: [potId], references: [id], onDelete: Cascade)
+  buyer User @relation(fields: [buyerId], references: [id], onDelete: Cascade)
+
+  @@index([potId])
+  @@index([buyerId])
+  @@index([status])
+  @@map("pot_contributions")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INVITED
+  INACTIVE
+}
+
+enum EventType {
+  BIRTHDAY
+  ANNIVERSARY
+  CUSTOM
+}
+
+enum ChannelType {
+  EMAIL
+  SMS
+}
+
+enum SendStatus {
+  PENDING
+  QUEUED
+  SENT
+  DELIVERED
+  FAILED
+  BOUNCED
+}
+
+enum LinkPurpose {
+  SELF_UPDATE
+  MEMBER_INVITE
+  GROUP_OPEN
+  HELPER_PROPOSE
+}
+
+enum ProposalStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum OrderType {
+  ONE_TAP_TREAT
+  POT_CONTRIBUTION
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  FAILED
+  REFUNDED
+}
+
+enum PotStatus {
+  OPEN
+  CLOSED
+  FULFILLED
+  CANCELLED
+}
+
+enum ContributionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}

@@ -58,3 +58,5 @@ lerna-debug.log*
 # OS
 Thumbs.db
 
+
+/lib/generated/prisma
