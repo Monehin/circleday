@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { AnimatedLogo } from '@/components/AnimatedLogo'
+import { useEffect, useState } from 'react'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 40 },
@@ -15,7 +16,22 @@ const stagger = {
   visible: { transition: { staggerChildren: 0.15 } }
 }
 
+// Generate static decorative circles to avoid hydration mismatch
+const generateCircles = () => {
+  return [...Array(20)].map((_, i) => ({
+    cx: Math.random() * 400,
+    cy: Math.random() * 400,
+    r: Math.random() * 3 + 1,
+    opacity: Math.random() * 0.5 + 0.5
+  }))
+}
+
 export default function Home() {
+  const [circles, setCircles] = useState<Array<{ cx: number; cy: number; r: number; opacity: number }>>([])
+  
+  useEffect(() => {
+    setCircles(generateCircles())
+  }, [])
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-primary/[0.02] to-white">
       {/* Animated Logo */}
@@ -277,14 +293,14 @@ export default function Home() {
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-accent to-primary p-12 text-center">
             <div className="absolute inset-0 opacity-10">
               <svg className="w-full h-full" viewBox="0 0 400 400">
-                {[...Array(20)].map((_, i) => (
+                {circles.map((circle, i) => (
                   <circle
                     key={i}
-                    cx={Math.random() * 400}
-                    cy={Math.random() * 400}
-                    r={Math.random() * 3 + 1}
+                    cx={circle.cx}
+                    cy={circle.cy}
+                    r={circle.r}
                     fill="white"
-                    opacity={Math.random() * 0.5 + 0.5}
+                    opacity={circle.opacity}
                   />
                 ))}
               </svg>
