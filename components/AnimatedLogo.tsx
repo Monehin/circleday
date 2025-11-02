@@ -73,7 +73,7 @@ export function AnimatedLogo() {
   }, [])
 
   return (
-    <div className="fixed top-6 left-6 z-50 filter drop-shadow-2xl">
+    <div className="absolute top-6 left-6 z-50 filter drop-shadow-2xl">
       <svg
         ref={logoRef}
         width="280"
@@ -126,13 +126,13 @@ export function AnimatedLogo() {
           />
         </g>
 
-        {/* Text - Better spacing and positioning */}
+        {/* Text - Solid color, better spacing and positioning */}
         <g ref={textRef}>
           <text
             className="font-display"
             fontSize="36"
             fontWeight="800"
-            fill="url(#textGradient)"
+            fill="hsl(222 47% 11%)"
             letterSpacing="2"
           >
             <tspan x="88" y="52">C</tspan>
@@ -153,10 +153,6 @@ export function AnimatedLogo() {
             <stop offset="0%" stopColor="hsl(18 100% 61%)" />
             <stop offset="50%" stopColor="hsl(28 96% 56%)" />
             <stop offset="100%" stopColor="hsl(38 92% 50%)" />
-          </linearGradient>
-          <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(222 47% 11%)" />
-            <stop offset="100%" stopColor="hsl(18 100% 61%)" />
           </linearGradient>
           <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="5" />
