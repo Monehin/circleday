@@ -335,12 +335,39 @@ export default function GroupDetailPage() {
           </motion.div>
         </motion.div>
 
-        {/* Members List */}
+        {/* Quick Actions */}
         <motion.div
           initial="hidden"
           animate="visible"
           variants={fadeIn}
           transition={{ delay: 0.2 }}
+          className="mb-8"
+        >
+          <Card className="p-6 border-border/50 shadow-lifted">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-1">Quick Actions</h3>
+                <p className="text-sm text-muted-foreground">
+                  Manage group settings and preferences
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Button variant="outline" asChild>
+                  <Link href={`/groups/${groupId}/reminders`}>
+                    ⏰ Manage Reminders
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </motion.div>
+
+        {/* Members List */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+          transition={{ delay: 0.3 }}
         >
           <Card className="border-border/50 shadow-lifted">
             <CardHeader>
