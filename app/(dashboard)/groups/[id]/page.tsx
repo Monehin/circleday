@@ -357,6 +357,11 @@ export default function GroupDetailPage() {
                     ⏰ Manage Reminders
                   </Link>
                 </Button>
+                <Button variant="outline" asChild>
+                  <Link href={`/groups/${groupId}/history`}>
+                    📊 View History
+                  </Link>
+                </Button>
               </div>
             </div>
           </Card>
