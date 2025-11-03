@@ -64,11 +64,13 @@ export async function sendMagicLinkEmail(
 
 ## Current Configuration
 
-Your `.env` file has:
+Your `.env` file should have:
 ```bash
-RESEND_API_KEY="re_3BK6Wqid_7vXBvkLz9YT7365bKfpdsYTe"
+RESEND_API_KEY="re_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"  # Get from https://resend.com/api-keys
 RESEND_FROM_EMAIL="noreply@circleday.app"
 ```
+
+**⚠️ NEVER commit your actual API key to the repository!**
 
 ## Steps to Fix
 
