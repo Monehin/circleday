@@ -1,84 +1,286 @@
 import { resend, FROM_EMAIL } from '@/lib/email/client'
 import { ReminderEmail } from '@/lib/email/templates/reminder'
 import { db } from '@/lib/db'
-import { calculateRemindersForToday, type ReminderToSend } from './reminder-calculator'
+import { ChannelType, SendStatus, ScheduledSend, Event, Contact } from '@prisma/client'
+import {
+  getPendingScheduledSendsForToday,
+  getFailedSendsToRetry,
+} from './reminder-scheduler'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-/**
- * Send a single reminder email
- */
-async function sendReminderEmail(reminder: ReminderToSend): Promise<boolean> {
-  try {
-    // In development, just log the reminder
-    if (process.env.NODE_ENV === 'development') {
-      console.log('\n📧 ===== REMINDER EMAIL =====')
-      console.log('To:', reminder.recipientEmail)
-      console.log('Name:', reminder.recipientName)
-      console.log('Event:', reminder.eventTitle || `${reminder.contactName}'s ${reminder.eventType}`)
-      console.log('Days Until:', reminder.daysUntil)
-      console.log('Group:', reminder.groupName)
-      console.log('===========================\n')
-      return true
-    }
-
-    // In production, send via Resend
-    await resend.emails.send({
-      from: FROM_EMAIL,
-      to: reminder.recipientEmail,
-      subject: `Reminder: ${reminder.eventTitle || `${reminder.contactName}'s ${reminder.eventType}`} ${
-        reminder.daysUntil === 0 ? 'is today!' : `in ${reminder.daysUntil} days`
-      }`,
-      react: ReminderEmail({
-        recipientName: reminder.recipientName,
-        contactName: reminder.contactName,
-        eventType: reminder.eventType,
-        eventTitle: reminder.eventTitle,
-        eventDate: reminder.nextOccurrence,
-        daysUntil: reminder.daysUntil,
-        groupName: reminder.groupName,
-        appUrl: APP_URL,
-      }),
-    })
-
-    return true
-  } catch (error) {
-    console.error('Failed to send reminder email:', error)
-    return false
+type ScheduledSendWithEvent = ScheduledSend & {
+  event: Event & {
+    contact: Contact
   }
 }
 
 /**
- * Log a sent reminder (console logging for now)
- * TODO: Integrate with ScheduledSend/SendLog schema for proper tracking
+ * Get recipient details for a scheduled send
  */
-async function logReminderSent(
-  reminder: ReminderToSend,
-  success: boolean,
-  error?: string
-): Promise<void> {
-  const logEntry = {
-    timestamp: new Date().toISOString(),
-    eventId: reminder.eventId,
-    recipientEmail: reminder.recipientEmail,
-    channel: 'EMAIL',
-    status: success ? 'SENT' : 'FAILED',
-    error: error || null,
-    metadata: {
-      ruleId: reminder.ruleId,
-      groupId: reminder.groupId,
-      groupName: reminder.groupName,
-      offset: reminder.offset,
-      daysUntil: reminder.daysUntil,
-      contactName: reminder.contactName,
+async function getRecipientDetails(scheduledSend: ScheduledSendWithEvent) {
+  // Find the group membership for this event's contact
+  const membership = await db.membership.findFirst({
+    where: {
+      contactId: scheduledSend.event.contactId,
+      status: 'ACTIVE',
     },
+    include: {
+      user: true,
+      group: true,
+    },
+  })
+
+  if (!membership || !membership.user) {
+    return null
   }
-  
-  console.log('📋 Reminder Log:', JSON.stringify(logEntry, null, 2))
-  
-  // TODO: Store in database using ScheduledSend/SendLog schema
-  // This requires creating ScheduledSend records during reminder calculation
-  // and then updating them with SendLog entries during sending
+
+  // Determine recipient identifier based on channel
+  let recipientIdentifier: string | null = null
+  if (scheduledSend.channel === 'EMAIL') {
+    recipientIdentifier = membership.user.email
+  } else if (scheduledSend.channel === 'SMS') {
+    recipientIdentifier = membership.user.phone
+  }
+
+  if (!recipientIdentifier) {
+    return null
+  }
+
+  return {
+    recipientIdentifier,
+    recipientName: membership.user.name || membership.user.email,
+    groupName: membership.group.name,
+  }
+}
+
+/**
+ * Send a reminder email using Resend
+ */
+async function sendReminderEmail(
+  scheduledSend: ScheduledSendWithEvent,
+  recipientEmail: string,
+  recipientName: string,
+  groupName: string
+): Promise<{ success: boolean; providerMessageId?: string; error?: string }> {
+  try {
+    // In development, just log instead of sending (unless RESEND_API_KEY is set)
+    if (process.env.NODE_ENV === 'development' && !process.env.RESEND_API_KEY) {
+      console.log('\n📧 ===== REMINDER EMAIL =====')
+      console.log('To:', recipientEmail)
+      console.log('Name:', recipientName)
+      console.log('Event:', scheduledSend.event.title || `${scheduledSend.event.contact.name}'s ${scheduledSend.event.type}`)
+      console.log('Days Until:', Math.abs(scheduledSend.offset))
+      console.log('Group:', groupName)
+      console.log('===========================\n')
+      return { success: true, providerMessageId: 'dev-' + Date.now() }
+    }
+
+    const response = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: recipientEmail,
+      subject: `Reminder: ${scheduledSend.event.title || `${scheduledSend.event.contact.name}'s ${scheduledSend.event.type}`} ${
+        scheduledSend.offset === 0 ? 'is today!' : `in ${Math.abs(scheduledSend.offset)} days`
+      }`,
+      react: ReminderEmail({
+        recipientName,
+        contactName: scheduledSend.event.contact.name,
+        eventType: scheduledSend.event.type,
+        eventTitle: scheduledSend.event.title,
+        eventDate: scheduledSend.targetDate,
+        daysUntil: Math.abs(scheduledSend.offset),
+        groupName,
+        appUrl: APP_URL,
+      }),
+    })
+
+    return {
+      success: true,
+      providerMessageId: response.data?.id || undefined,
+    }
+  } catch (error) {
+    console.error('❌ Failed to send reminder email:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * Send a reminder SMS using Twilio
+ */
+async function sendReminderSMS(
+  scheduledSend: ScheduledSendWithEvent,
+  recipientPhone: string,
+  recipientName: string,
+  groupName: string
+): Promise<{ success: boolean; providerMessageId?: string; error?: string }> {
+  try {
+    const {
+      twilioClient,
+      TWILIO_PHONE_NUMBER,
+      isSMSEnabled,
+      formatPhoneNumber,
+    } = await import('@/lib/sms/client')
+    const { generateReminderSMS } = await import('@/lib/sms/templates/reminder')
+
+    // Check if SMS is enabled
+    if (!isSMSEnabled()) {
+      console.log('📱 SMS not enabled (Twilio credentials not configured)')
+      return {
+        success: false,
+        error: 'SMS not enabled - Twilio credentials not configured',
+      }
+    }
+
+    // Format phone number
+    const formattedPhone = formatPhoneNumber(recipientPhone)
+
+    // Generate SMS message
+    const smsBody = generateReminderSMS({
+      contactName: scheduledSend.event.contact.name,
+      eventType: scheduledSend.event.type,
+      eventTitle: scheduledSend.event.title,
+      eventDate: scheduledSend.targetDate,
+      daysUntil: Math.abs(scheduledSend.offset),
+      groupName,
+      appUrl: APP_URL,
+    })
+
+    // In development without Twilio, just log
+    if (process.env.NODE_ENV === 'development' && !twilioClient) {
+      console.log('\n📱 ===== REMINDER SMS =====')
+      console.log('To:', formattedPhone)
+      console.log('From:', TWILIO_PHONE_NUMBER)
+      console.log('Message:', smsBody)
+      console.log('==========================\n')
+      return { success: true, providerMessageId: 'dev-sms-' + Date.now() }
+    }
+
+    // Send via Twilio
+    const message = await twilioClient!.messages.create({
+      body: smsBody,
+      from: TWILIO_PHONE_NUMBER,
+      to: formattedPhone,
+    })
+
+    console.log(`✅ Sent SMS reminder to ${formattedPhone}:`, message.sid)
+
+    return {
+      success: true,
+      providerMessageId: message.sid,
+    }
+  } catch (error) {
+    console.error('❌ Failed to send SMS reminder:', error)
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * Process a single scheduled send
+ */
+async function processScheduledSend(
+  scheduledSend: ScheduledSendWithEvent
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Update status to QUEUED
+    await db.scheduledSend.update({
+      where: { id: scheduledSend.id },
+      data: { status: 'QUEUED' },
+    })
+
+    // Get recipient details
+    const recipientDetails = await getRecipientDetails(scheduledSend)
+    if (!recipientDetails) {
+      throw new Error('No recipient found or recipient has no contact info')
+    }
+
+    const { recipientIdentifier, recipientName, groupName } = recipientDetails
+
+    // Send based on channel
+    let result: { success: boolean; providerMessageId?: string; error?: string }
+    
+    if (scheduledSend.channel === 'EMAIL') {
+      result = await sendReminderEmail(
+        scheduledSend,
+        recipientIdentifier,
+        recipientName,
+        groupName
+      )
+    } else if (scheduledSend.channel === 'SMS') {
+      result = await sendReminderSMS(
+        scheduledSend,
+        recipientIdentifier,
+        recipientName,
+        groupName
+      )
+    } else {
+      result = { success: false, error: 'Unknown channel type' }
+    }
+
+    // Create send log
+    await db.sendLog.create({
+      data: {
+        scheduledSendId: scheduledSend.id,
+        provider: scheduledSend.channel === 'EMAIL' ? 'resend' : 'twilio',
+        providerMessageId: result.providerMessageId,
+        status: result.success ? 'SENT' : 'FAILED',
+        error: result.error,
+      },
+    })
+
+    // Update scheduled send status
+    if (result.success) {
+      await db.scheduledSend.update({
+        where: { id: scheduledSend.id },
+        data: {
+          status: 'SENT',
+          sentAt: new Date(),
+        },
+      })
+      console.log(`✅ Sent ${scheduledSend.channel} reminder for event ${scheduledSend.eventId}`)
+    } else {
+      await db.scheduledSend.update({
+        where: { id: scheduledSend.id },
+        data: {
+          status: 'FAILED',
+          failedAt: new Date(),
+          retryCount: { increment: 1 },
+        },
+      })
+      console.log(`❌ Failed to send ${scheduledSend.channel} reminder: ${result.error}`)
+    }
+
+    return { success: result.success, error: result.error }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
+    // Log the error
+    await db.sendLog.create({
+      data: {
+        scheduledSendId: scheduledSend.id,
+        provider: scheduledSend.channel === 'EMAIL' ? 'resend' : 'twilio',
+        status: 'FAILED',
+        error: errorMessage,
+      },
+    })
+
+    // Update scheduled send
+    await db.scheduledSend.update({
+      where: { id: scheduledSend.id },
+      data: {
+        status: 'FAILED',
+        failedAt: new Date(),
+        retryCount: { increment: 1 },
+      },
+    })
+
+    return { success: false, error: errorMessage }
+  }
 }
 
 /**
@@ -96,36 +298,41 @@ export async function processRemindersForToday(): Promise<{
   let failed = 0
 
   try {
-    // Calculate all reminders that should be sent today
-    const reminders = await calculateRemindersForToday()
-    const total = reminders.length
+    // Get all pending scheduled sends for today
+    const scheduledSends = await getPendingScheduledSendsForToday()
+    const total = scheduledSends.length
 
-    console.log(`📅 Processing ${total} reminders for today...`)
+    console.log(`📅 Processing ${total} scheduled reminders for today...`)
 
-    // Send each reminder
-    for (const reminder of reminders) {
-      try {
-        const success = await sendReminderEmail(reminder)
-        
-        if (success) {
-          sent++
-          await logReminderSent(reminder, true)
-          console.log(`✅ Sent reminder to ${reminder.recipientEmail} for ${reminder.contactName}'s ${reminder.eventType}`)
-        } else {
-          failed++
-          await logReminderSent(reminder, false, 'Failed to send email')
-          errors.push(`Failed to send reminder to ${reminder.recipientEmail}`)
-        }
-      } catch (error) {
+    // Process each scheduled send
+    for (const scheduledSend of scheduledSends) {
+      const result = await processScheduledSend(scheduledSend)
+      
+      if (result.success) {
+        sent++
+      } else {
         failed++
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        await logReminderSent(reminder, false, errorMessage)
-        errors.push(`Error sending reminder to ${reminder.recipientEmail}: ${errorMessage}`)
-        console.error(`❌ Error sending reminder:`, error)
+        errors.push(`Failed to send reminder ${scheduledSend.id}: ${result.error}`)
       }
     }
 
-    console.log(`✅ Reminder processing complete: ${sent} sent, ${failed} failed`)
+    // Process retries for failed sends (up to 3 attempts)
+    const failedSends = await getFailedSendsToRetry(3)
+    console.log(`🔄 Retrying ${failedSends.length} failed reminders...`)
+
+    for (const scheduledSend of failedSends) {
+      const result = await processScheduledSend(scheduledSend)
+      
+      if (result.success) {
+        sent++
+        console.log(`✅ Retry successful for ${scheduledSend.id}`)
+      } else {
+        failed++
+        errors.push(`Retry failed for ${scheduledSend.id}: ${result.error}`)
+      }
+    }
+
+    console.log(`✅ Reminder processing complete: ${sent} sent, ${failed} failed out of ${total} total`)
 
     return { total, sent, failed, errors }
   } catch (error) {
@@ -136,28 +343,93 @@ export async function processRemindersForToday(): Promise<{
 
 /**
  * Get reminder sending history for an event
- * TODO: Implement with ScheduledSend/SendLog schema
  */
 export async function getReminderHistory(eventId: string) {
-  console.log('getReminderHistory called for event:', eventId)
-  // TODO: Query ScheduledSend and SendLog tables
-  return { success: true, logs: [] }
+  try {
+    const scheduledSends = await db.scheduledSend.findMany({
+      where: { eventId },
+      include: {
+        sendLogs: true,
+        event: {
+          include: {
+            contact: true,
+          },
+        },
+      },
+      orderBy: {
+        dueAtUtc: 'desc',
+      },
+    })
+
+    return {
+      success: true,
+      logs: scheduledSends,
+    }
+  } catch (error) {
+    console.error('Failed to get reminder history:', error)
+    return {
+      success: false,
+      logs: [],
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
 }
 
 /**
  * Get reminder sending statistics
- * TODO: Implement with ScheduledSend/SendLog schema
  */
 export async function getReminderSendingStats() {
-  // TODO: Query ScheduledSend and SendLog tables for statistics
-  return {
-    success: true,
-    stats: {
-      totalSent: 0,
-      totalFailed: 0,
-      successRate: '0',
-      recentSends: [],
-    },
+  try {
+    const [totalSent, totalFailed, recentSends] = await Promise.all([
+      db.scheduledSend.count({
+        where: { status: { in: ['SENT', 'DELIVERED'] } },
+      }),
+      db.scheduledSend.count({
+        where: { status: 'FAILED' },
+      }),
+      db.scheduledSend.findMany({
+        where: {
+          sentAt: { not: null },
+        },
+        take: 10,
+        orderBy: {
+          sentAt: 'desc',
+        },
+        include: {
+          event: {
+            include: {
+              contact: true,
+            },
+          },
+          sendLogs: true,
+        },
+      }),
+    ])
+
+    const successRate = totalSent + totalFailed > 0
+      ? ((totalSent / (totalSent + totalFailed)) * 100).toFixed(1)
+      : '0'
+
+    return {
+      success: true,
+      stats: {
+        totalSent,
+        totalFailed,
+        successRate,
+        recentSends,
+      },
+    }
+  } catch (error) {
+    console.error('Failed to get reminder stats:', error)
+    return {
+      success: false,
+      stats: {
+        totalSent: 0,
+        totalFailed: 0,
+        successRate: '0',
+        recentSends: [],
+      },
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
   }
 }
-

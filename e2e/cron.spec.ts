@@ -11,10 +11,14 @@ test.describe('Cron Job Endpoints', () => {
     expect(data).toHaveProperty('success')
     
     if (data.success) {
-      expect(data).toHaveProperty('stats')
-      expect(data.stats).toHaveProperty('total')
-      expect(data.stats).toHaveProperty('sent')
-      expect(data.stats).toHaveProperty('failed')
+      expect(data).toHaveProperty('scheduling')
+      expect(data).toHaveProperty('sending')
+      expect(data.scheduling).toHaveProperty('scheduled')
+      expect(data.scheduling).toHaveProperty('skipped')
+      expect(data.scheduling).toHaveProperty('errors')
+      expect(data.sending).toHaveProperty('total')
+      expect(data.sending).toHaveProperty('sent')
+      expect(data.sending).toHaveProperty('failed')
     }
   })
 
@@ -35,10 +39,14 @@ test.describe('Cron Job Endpoints', () => {
     // Check response structure
     if (data.success) {
       expect(data).toHaveProperty('message')
-      expect(data).toHaveProperty('stats')
-      expect(typeof data.stats.total).toBe('number')
-      expect(typeof data.stats.sent).toBe('number')
-      expect(typeof data.stats.failed).toBe('number')
+      expect(data).toHaveProperty('scheduling')
+      expect(data).toHaveProperty('sending')
+      expect(typeof data.scheduling.scheduled).toBe('number')
+      expect(typeof data.scheduling.skipped).toBe('number')
+      expect(typeof data.scheduling.errors).toBe('number')
+      expect(typeof data.sending.total).toBe('number')
+      expect(typeof data.sending.sent).toBe('number')
+      expect(typeof data.sending.failed).toBe('number')
     } else {
       expect(data).toHaveProperty('error')
     }

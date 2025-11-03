@@ -2,16 +2,16 @@
 
 ## 📊 Overall Test Statistics
 
-**Total Tests:** 101 unit + 26 E2E = 127 total  
-**Passing:** 127 ✅  
+**Total Tests:** 127 unit + 26 E2E = 153 total  
+**Passing:** 153 ✅  
 **Failing:** 0 ✅  
-**Coverage:** All critical server actions, business logic, user flows, and cron jobs tested
+**Coverage:** All critical server actions, business logic, user flows, cron jobs, SMS, and scheduling tested
 
 ---
 
-## ✅ Unit Tests (101 passing)
+## ✅ Unit Tests (127 passing)
 
-### Infrastructure Tests (Existing - 40 tests)
+### Infrastructure Tests (40 tests)
 - ✅ Utils & Helper Functions (4 tests)
 - ✅ Error Handling System (10 tests)
 - ✅ Environment Configuration (2 tests)
@@ -20,7 +20,7 @@
 - ✅ UI Components (7 tests)
 - ✅ Database Integration (8 tests)
 
-### Groups Feature Tests (NEW - 8 tests)
+### Groups Feature Tests (8 tests)
 - ✅ `createGroup` authentication check
 - ✅ `createGroup` input validation (min/max length)
 - ✅ `createGroup` with transaction (group + contact + membership + audit)
@@ -30,7 +30,7 @@
 - ✅ `addMember` permission validation (owner/admin only)
 - ✅ `addMember` requires email or phone
 
-### Events Feature Tests (NEW - 9 tests)
+### Events Feature Tests (9 tests)
 - ✅ `createEvent` authentication check
 - ✅ `createEvent` requires title for CUSTOM events
 - ✅ `createEvent` validates contact access
@@ -41,7 +41,7 @@
 - ✅ `deleteEvent` authentication check
 - ✅ `deleteEvent` performs soft delete with deletedAt timestamp
 
-### AddMemberModal Component Tests (NEW - 9 tests)
+### AddMemberModal Component Tests (9 tests)
 - ✅ Renders when open, hidden when closed
 - ✅ Shows all required form fields
 - ✅ Validates empty name input
@@ -52,7 +52,7 @@
 - ✅ Email input has correct type attribute
 - ✅ All 9 tests passing
 
-### Reminder Rules Tests (NEW - 15 tests)
+### Reminder Rules Tests (15 tests)
 - ✅ `getReminderRules` authentication check
 - ✅ `getReminderRules` returns error if user is not a member
 - ✅ `getReminderRules` returns rules for the group
@@ -69,7 +69,7 @@
 - ✅ `deleteReminderRule` validates permission
 - ✅ `deleteReminderRule` deletes rule successfully
 
-### Profile Tests (NEW - 13 tests)
+### Profile Tests (13 tests)
 - ✅ `getUserProfile` authentication check
 - ✅ `getUserProfile` returns error if user not found
 - ✅ `getUserProfile` returns profile successfully
@@ -84,7 +84,7 @@
 - ✅ `getUserStats` counts only active memberships
 - ✅ `getUserStats` counts only non-deleted events and contacts
 
-### Reminder Scheduling Tests (NEW - 7 tests)
+### Reminder Scheduling Tests (LEGACY - 7 tests)
 - ✅ `calculateRemindersForToday` returns empty array when no rules exist
 - ✅ `calculateRemindersForToday` calculates reminders for matching offsets
 - ✅ `calculateRemindersForToday` handles multiple reminders per event
@@ -92,6 +92,44 @@
 - ✅ `calculateRemindersForToday` skips deleted events
 - ✅ `calculateRemindersForToday` only sends to users with email
 - ✅ `getReminderStats` returns reminder statistics
+
+### Phase 1: Database Scheduler Tests (NEW - 7 tests)
+- ✅ `scheduleUpcomingReminders` schedules reminders for upcoming events
+- ✅ `scheduleUpcomingReminders` skips suppressed recipients
+- ✅ `scheduleUpcomingReminders` skips events outside 30-day window
+- ✅ `scheduleUpcomingReminders` handles multiple channels (EMAIL + SMS)
+- ✅ `getPendingScheduledSendsForToday` returns pending scheduled sends
+- ✅ `getFailedSendsToRetry` returns failed sends with retry count under max
+- ✅ `getSchedulerStats` returns scheduler statistics
+
+### Phase 1: SMS Client Tests (NEW - 9 tests)
+**Phone Number Formatting:**
+- ✅ Handles E.164 formatted numbers (already valid)
+- ✅ Formats 10-digit US numbers (+1 prefix)
+- ✅ Formats 11-digit US numbers with leading 1
+- ✅ Removes formatting characters from phone numbers
+- ✅ Handles mixed formatting styles
+
+**Phone Number Validation:**
+- ✅ Validates correct E.164 phone numbers
+- ✅ Validates formatted US numbers
+- ✅ Rejects invalid phone numbers
+- ✅ Handles edge cases (min/max digit lengths)
+
+### Phase 1: SMS Templates Tests (NEW - 10 tests)
+**Reminder SMS Generation:**
+- ✅ Generates SMS for event today (day 0) with proper emoji and timeframe
+- ✅ Generates SMS for event tomorrow (day 1)
+- ✅ Generates SMS for event within a week (days 2-7)
+- ✅ Generates SMS for event more than a week away
+- ✅ Uses custom event title when provided
+- ✅ Includes group name if message is not too long
+
+**Other SMS Templates:**
+- ✅ Generates SMS for event updates
+- ✅ Handles custom events in updates
+- ✅ Generates SMS for group invitations
+- ✅ Ensures SMS messages are concise and readable
 
 ---
 
