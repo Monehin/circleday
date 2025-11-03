@@ -1,8 +1,7 @@
 import { Suspense } from 'react'
 import { notFound, redirect } from 'next/navigation'
-import { auth } from '@/lib/auth/auth'
+import { auth } from '@/lib/auth/config'
 import { headers } from 'next/headers'
-import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { ReminderHistoryList } from '@/components/dashboard/reminder-history-list'
 import { ReminderStatsCards } from '@/components/dashboard/reminder-stats-cards'
 import { Loader } from '@/components/ui/loader'
@@ -92,10 +91,12 @@ export default async function ReminderHistoryPage({
       </Breadcrumb>
 
       {/* Header */}
-      <DashboardHeader
-        title="Reminder History"
-        description={`View all reminders sent for ${group.name}`}
-      />
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Reminder History</h1>
+        <p className="text-muted-foreground">
+          View all reminders sent for {group.name}
+        </p>
+      </div>
 
       {/* Statistics Cards */}
       <Suspense fallback={<Loader />}>

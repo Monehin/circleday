@@ -1,7 +1,7 @@
 'use server'
 
 import { db } from '@/lib/db'
-import { auth } from '@/lib/auth/auth'
+import { auth } from '@/lib/auth/config'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { startOfDay, endOfDay, subDays } from 'date-fns'
@@ -285,7 +285,7 @@ export async function retryFailedReminder(scheduledSendId: string) {
     if (!validation.success) {
       return {
         success: false,
-        error: validation.error.errors[0].message,
+        error: validation.error.issues[0]?.message || 'Invalid input',
       }
     }
 
