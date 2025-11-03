@@ -455,7 +455,7 @@ describe('Reminder Scheduler', () => {
       const result = await getPendingScheduledSendsForToday()
 
       expect(result).toHaveLength(1)
-      expect(result[0].status).toBe('PENDING')
+      expect(result[0]?.status).toBe('PENDING')
       expect(db.scheduledSend.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
