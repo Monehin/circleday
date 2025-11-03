@@ -2,14 +2,14 @@
 
 ## 📊 Overall Test Statistics
 
-**Total Tests:** 94 unit + 23 E2E = 117 total  
-**Passing:** 117 ✅  
+**Total Tests:** 101 unit + 26 E2E = 127 total  
+**Passing:** 127 ✅  
 **Failing:** 0 ✅  
-**Coverage:** All critical server actions, business logic, and user flows tested
+**Coverage:** All critical server actions, business logic, user flows, and cron jobs tested
 
 ---
 
-## ✅ Unit Tests (94 passing)
+## ✅ Unit Tests (101 passing)
 
 ### Infrastructure Tests (Existing - 40 tests)
 - ✅ Utils & Helper Functions (4 tests)
@@ -84,6 +84,15 @@
 - ✅ `getUserStats` counts only active memberships
 - ✅ `getUserStats` counts only non-deleted events and contacts
 
+### Reminder Scheduling Tests (NEW - 7 tests)
+- ✅ `calculateRemindersForToday` returns empty array when no rules exist
+- ✅ `calculateRemindersForToday` calculates reminders for matching offsets
+- ✅ `calculateRemindersForToday` handles multiple reminders per event
+- ✅ `calculateRemindersForToday` handles recurring events with next occurrence
+- ✅ `calculateRemindersForToday` skips deleted events
+- ✅ `calculateRemindersForToday` only sends to users with email
+- ✅ `getReminderStats` returns reminder statistics
+
 ---
 
 ## 🎭 E2E Tests (Playwright)
@@ -121,12 +130,12 @@
 
 | Category | Before | After | Added |
 |----------|--------|-------|-------|
-| Unit Tests | 40 | 94 | +54 ✨ |
-| E2E Tests | 9 | 23 | +14 ✨ |
-| **Total** | **49** | **117** | **+68** ✨ |
+| Unit Tests | 40 | 101 | +61 ✨ |
+| E2E Tests | 9 | 26 | +17 ✨ |
+| **Total** | **49** | **127** | **+78** ✨ |
 
-**Unit Test Coverage:** Groups, Events, Reminder Rules, Profile server actions + UI components  
-**E2E Test Focus:** Security validation (redirects, auth protection) for all protected routes
+**Unit Test Coverage:** Groups, Events, Reminder Rules, Profile, Reminder Scheduling + UI components  
+**E2E Test Focus:** Security validation (redirects, auth protection) + Cron job endpoints
 
 ---
 
@@ -189,7 +198,7 @@ npm test && npm run test:e2e
 - This approach validates security without requiring test user setup
 - All E2E tests should pass consistently in CI
 
-## ✅ E2E Tests (23 passing with Playwright)
+## ✅ E2E Tests (26 passing with Playwright)
 
 ### Homepage & Health (3 tests)
 - ✅ Homepage loads successfully
@@ -224,11 +233,17 @@ npm test && npm run test:e2e
 - ✅ Settings page structure renders correctly
 - ✅ App metadata properly configured
 
+### Cron Job Endpoints (3 tests)
+- ✅ GET endpoint works in development mode
+- ✅ POST endpoint processes reminders
+- ✅ Returns proper response structure with stats
+
 **Future Test Additions:**
-- Integration tests for email sending
+- Integration tests for email sending with Resend
 - Performance tests for large datasets
 - Unit tests for notification preferences
 - E2E tests with authenticated users
+- Database logging integration tests
 
 ---
 
