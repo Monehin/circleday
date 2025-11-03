@@ -2,14 +2,14 @@
 
 ## 📊 Overall Test Statistics
 
-**Total Tests:** 66  
-**Passing:** 66 ✅  
+**Total Tests:** 94 unit + 23 E2E = 117 total  
+**Passing:** 117 ✅  
 **Failing:** 0 ✅  
-**Coverage:** All critical server actions and business logic tested
+**Coverage:** All critical server actions, business logic, and user flows tested
 
 ---
 
-## ✅ Unit Tests (66 passing)
+## ✅ Unit Tests (94 passing)
 
 ### Infrastructure Tests (Existing - 40 tests)
 - ✅ Utils & Helper Functions (4 tests)
@@ -52,6 +52,38 @@
 - ✅ Email input has correct type attribute
 - ✅ All 9 tests passing
 
+### Reminder Rules Tests (NEW - 15 tests)
+- ✅ `getReminderRules` authentication check
+- ✅ `getReminderRules` returns error if user is not a member
+- ✅ `getReminderRules` returns rules for the group
+- ✅ `createReminderRule` authentication check
+- ✅ `createReminderRule` validates owner/admin permission
+- ✅ `createReminderRule` creates rule successfully
+- ✅ `createReminderRule` validates at least one offset required
+- ✅ `updateReminderRule` authentication check
+- ✅ `updateReminderRule` returns error if rule not found
+- ✅ `updateReminderRule` validates permission
+- ✅ `updateReminderRule` updates rule successfully
+- ✅ `deleteReminderRule` authentication check
+- ✅ `deleteReminderRule` returns error if rule not found
+- ✅ `deleteReminderRule` validates permission
+- ✅ `deleteReminderRule` deletes rule successfully
+
+### Profile Tests (NEW - 13 tests)
+- ✅ `getUserProfile` authentication check
+- ✅ `getUserProfile` returns error if user not found
+- ✅ `getUserProfile` returns profile successfully
+- ✅ `updateUserProfile` authentication check
+- ✅ `updateUserProfile` validates email is not taken
+- ✅ `updateUserProfile` updates profile successfully
+- ✅ `updateUserProfile` validates name length
+- ✅ `updateUserProfile` validates email format
+- ✅ `updateUserProfile` allows updating to same email
+- ✅ `getUserStats` authentication check
+- ✅ `getUserStats` returns stats successfully
+- ✅ `getUserStats` counts only active memberships
+- ✅ `getUserStats` counts only non-deleted events and contacts
+
 ---
 
 ## 🎭 E2E Tests (Playwright)
@@ -89,11 +121,12 @@
 
 | Category | Before | After | Added |
 |----------|--------|-------|-------|
-| Unit Tests | 40 | 66 | +26 ✨ |
-| E2E Tests | 9 | 18 | +9 ✨ |
-| **Total** | **49** | **84** | **+35** ✨ |
+| Unit Tests | 40 | 94 | +54 ✨ |
+| E2E Tests | 9 | 23 | +14 ✨ |
+| **Total** | **49** | **117** | **+68** ✨ |
 
-**E2E Test Focus:** Security validation (redirects, auth protection)
+**Unit Test Coverage:** Groups, Events, Reminder Rules, Profile server actions + UI components  
+**E2E Test Focus:** Security validation (redirects, auth protection) for all protected routes
 
 ---
 
@@ -156,11 +189,46 @@ npm test && npm run test:e2e
 - This approach validates security without requiring test user setup
 - All E2E tests should pass consistently in CI
 
+## ✅ E2E Tests (23 passing with Playwright)
+
+### Homepage & Health (3 tests)
+- ✅ Homepage loads successfully
+- ✅ Security headers properly configured
+- ✅ Health check API returns correct status
+
+### Authentication & Security (6 tests)
+- ✅ Events page redirects to login without auth
+- ✅ Create event page redirects to login without auth
+- ✅ Event detail redirects to login without auth
+- ✅ Groups page redirects to login without auth
+- ✅ Create group redirects to login without auth
+- ✅ Group detail redirects to login without auth
+
+### Redirect Parameters (3 tests)
+- ✅ Events redirectTo parameter preserved in URL
+- ✅ Groups redirectTo parameter preserved in URL
+- ✅ Mobile users redirected correctly
+
+### Reminder Rules (4 tests)
+- ✅ Reminder rules page redirects to login without auth
+- ✅ Reminder rules page structure renders correctly
+- ✅ Page metadata properly configured
+- ✅ API handles reminder rule validation correctly
+
+### User Profile & Settings (7 tests)
+- ✅ Profile page redirects to login without auth
+- ✅ Profile redirectTo parameter preserved in URL
+- ✅ Profile page structure renders correctly
+- ✅ Settings page redirects to login without auth
+- ✅ Settings redirectTo parameter preserved in URL
+- ✅ Settings page structure renders correctly
+- ✅ App metadata properly configured
+
 **Future Test Additions:**
-- Reminder rules tests (Epic 5)
-- User profile tests (Epic 6)
 - Integration tests for email sending
 - Performance tests for large datasets
+- Unit tests for notification preferences
+- E2E tests with authenticated users
 
 ---
 
