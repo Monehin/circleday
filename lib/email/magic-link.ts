@@ -6,6 +6,11 @@ export async function sendMagicLinkEmail(
   url: string,
   token: string
 ): Promise<void> {
+  console.log('[Magic Link] Starting email send process...')
+  console.log('[Magic Link] NODE_ENV:', process.env.NODE_ENV)
+  console.log('[Magic Link] To:', email)
+  console.log('[Magic Link] From:', FROM_EMAIL)
+  
   // Development mode: log magic link to console
   if (process.env.NODE_ENV === 'development') {
     console.log('\n🔐 ===== MAGIC LINK EMAIL =====')
@@ -20,14 +25,17 @@ export async function sendMagicLinkEmail(
 
   // Production mode: send via Resend
   try {
-    await resend.emails.send({
+    console.log('[Magic Link] Sending email via Resend...')
+    const result = await resend.emails.send({
       from: FROM_EMAIL,
       to: email,
       subject: 'Sign in to CircleDay',
       react: MagicLinkEmail({ magicLink: url }),
     })
+    console.log('[Magic Link] ✅ Email sent successfully!')
+    console.log('[Magic Link] Resend response:', JSON.stringify(result, null, 2))
   } catch (error) {
-    console.error('Failed to send magic link email:', error)
+    console.error('[Magic Link] ❌ Failed to send email:', error)
     throw new Error('Failed to send magic link email')
   }
 }
