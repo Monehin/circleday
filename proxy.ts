@@ -41,7 +41,7 @@ export default async function proxy(request: NextRequest) {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
     "font-src 'self' data:",
-    "connect-src 'self' https://api.stripe.com https://api.resend.com https://api.twilio.com",
+    "connect-src 'self' https://circleday.app https://api.stripe.com https://api.resend.com https://api.twilio.com",
     "frame-src 'self' https://js.stripe.com https://checkout.stripe.com",
     "base-uri 'self'",
     "form-action 'self'",
