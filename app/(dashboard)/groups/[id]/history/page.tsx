@@ -1,124 +1,131 @@
-import { Suspense } from 'react'
-import { notFound, redirect } from 'next/navigation'
-import { auth } from '@/lib/auth/config'
-import { headers } from 'next/headers'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { useSession } from '@/lib/auth/client'
+import { motion } from 'framer-motion'
+import Link from 'next/link'
+import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { ReminderHistoryList } from '@/components/dashboard/reminder-history-list'
-import { ReminderStatsCards } from '@/components/dashboard/reminder-stats-cards'
-import { Loader } from '@/components/ui/loader'
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from '@/components/ui/breadcrumb'
-import { db } from '@/lib/db'
+import { ReminderStatsCardsClient } from '@/components/dashboard/reminder-stats-cards-client'
+import { PageLoader } from '@/components/ui/loader'
 
-interface ReminderHistoryPageProps {
-  params: { id: string }
-  searchParams: {
-    status?: string
-    channel?: string
-    page?: string
-  }
+const fadeIn = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
 }
 
-async function getGroup(groupId: string, userId: string) {
-  const group = await db.group.findFirst({
-    where: {
-      id: groupId,
-      deletedAt: null,
-      memberships: {
-        some: {
-          userId,
-          status: 'ACTIVE',
-        },
-      },
-    },
-    include: {
-      memberships: {
-        where: { status: 'ACTIVE' },
-        include: {
-          contact: true,
-        },
-      },
-    },
-  })
-
-  return group
+interface GroupData {
+  id: string
+  name: string
 }
 
-export default async function ReminderHistoryPage({
-  params,
-  searchParams,
-}: ReminderHistoryPageProps) {
-  // Get session
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  })
+export default function ReminderHistoryPage() {
+  const params = useParams()
+  const router = useRouter()
+  const { data: session, isPending } = useSession()
+  const [group, setGroup] = useState<GroupData | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  if (!session) {
-    redirect(`/login?redirectTo=/groups/${params.id}/history`)
+  const groupId = params.id as string
+
+  useEffect(() => {
+    if (!isPending && !session) {
+      router.push(`/login?redirectTo=/groups/${groupId}/history`)
+    }
+  }, [session, isPending, router, groupId])
+
+  useEffect(() => {
+    if (session && groupId) {
+      loadGroup()
+    }
+  }, [session, groupId])
+
+  async function loadGroup() {
+    try {
+      // Fetch group data using server action
+      const response = await fetch(`/api/groups/${groupId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setGroup(data)
+      } else {
+        router.push('/groups')
+      }
+    } catch (error) {
+      console.error('Failed to load group:', error)
+      router.push('/groups')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Get group
-  const group = await getGroup(params.id, session.user.id)
+  if (isPending || loading) {
+    return <PageLoader message="Loading reminder history..." />
+  }
 
-  if (!group) {
-    notFound()
+  if (!session || !group) {
+    return null
   }
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb>
-        <BreadcrumbList>
-          <BreadcrumbItem>
-            <BreadcrumbLink href="/groups">Groups</BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbLink href={`/groups/${params.id}`}>
-              {group.name}
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbSeparator />
-          <BreadcrumbItem>
-            <BreadcrumbPage>Reminder History</BreadcrumbPage>
-          </BreadcrumbItem>
-        </BreadcrumbList>
-      </Breadcrumb>
+    <div className="min-h-screen bg-gradient-to-b from-background via-primary/[0.02] to-background">
+      <DashboardHeader user={session.user} />
+      
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Breadcrumb */}
+        <motion.div 
+          initial="hidden" 
+          animate="visible" 
+          variants={fadeIn} 
+          className="mb-6 text-sm text-muted-foreground"
+        >
+          <Link href="/groups" className="hover:text-foreground transition-colors">
+            Groups
+          </Link>
+          <span className="mx-2">/</span>
+          <Link 
+            href={`/groups/${groupId}`} 
+            className="hover:text-foreground transition-colors"
+          >
+            {group.name}
+          </Link>
+          <span className="mx-2">/</span>
+          <span className="font-medium text-foreground">Reminder History</span>
+        </motion.div>
 
-      {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Reminder History</h1>
-        <p className="text-muted-foreground">
-          View all reminders sent for {group.name}
-        </p>
-      </div>
+        {/* Header */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+          className="mb-8"
+        >
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Reminder History
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            View all reminders sent for {group.name}
+          </p>
+        </motion.div>
 
-      {/* Statistics Cards */}
-      <Suspense fallback={<Loader />}>
-        <ReminderStatsCards groupId={params.id} />
-      </Suspense>
+        {/* Content */}
+        <motion.div
+          initial="hidden"
+          animate="visible"
+          variants={fadeIn}
+          className="space-y-6"
+        >
+          {/* Statistics Cards */}
+          <ReminderStatsCardsClient groupId={groupId} />
 
-      {/* Reminder History List */}
-      <Suspense fallback={<Loader />}>
-        <ReminderHistoryList
-          groupId={params.id}
-          groupName={group.name}
-          status={searchParams.status}
-          channel={searchParams.channel}
-          page={searchParams.page ? parseInt(searchParams.page) : 1}
-        />
-      </Suspense>
+          {/* Reminder History List */}
+          <ReminderHistoryList
+            groupId={groupId}
+            groupName={group.name}
+          />
+        </motion.div>
+      </main>
     </div>
   )
-}
-
-export const metadata = {
-  title: 'Reminder History',
-  description: 'View reminder delivery history and status',
 }
 
