@@ -1,4 +1,7 @@
+
 'use client'
+
+// Force dynamic rendering for personalized content
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -128,4 +131,3 @@ export default function ReminderHistoryPage() {
     </div>
   )
 }
-

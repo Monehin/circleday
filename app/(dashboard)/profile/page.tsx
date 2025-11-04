@@ -1,4 +1,7 @@
+
 'use client'
+
+// Force dynamic rendering for personalized content
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -400,4 +403,3 @@ export default function ProfilePage() {
     </div>
   )
 }
-

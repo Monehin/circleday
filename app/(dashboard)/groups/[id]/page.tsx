@@ -1,4 +1,7 @@
+
 'use client'
+
+// Force dynamic rendering for personalized content
 
 import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
@@ -447,4 +450,3 @@ export default function GroupDetailPage() {
     </div>
   )
 }
-

@@ -3,6 +3,10 @@ import type { NextConfig } from 'next'
 const config: NextConfig = {
   reactStrictMode: true,
   
+  // Cache Components disabled for now due to client-heavy dashboard architecture
+  // The "use cache" directive still works on server actions/components
+  // cacheComponents: true,
+  
   // Disable typedRoutes during development while routes are being built
   typedRoutes: false,
   

@@ -1,5 +1,7 @@
 'use client'
 
+// Force dynamic rendering for personalized content
+
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -184,4 +186,3 @@ export default function SettingsPage() {
     </div>
   )
 }
-

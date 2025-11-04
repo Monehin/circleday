@@ -1,4 +1,7 @@
+
 'use client'
+
+// Force dynamic rendering for personalized content
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
@@ -147,4 +150,3 @@ export default function GroupsPage() {
     </div>
   )
 }
-

@@ -1,4 +1,7 @@
+
 'use client'
+
+// Force dynamic rendering for personalized content
 
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
@@ -298,4 +301,3 @@ export default function GroupRemindersPage() {
     </div>
   )
 }
-
