@@ -5,6 +5,8 @@ import { db } from '@/lib/db'
 import { sendMagicLinkEmail } from '@/lib/email/magic-link'
 
 export const auth = betterAuth({
+  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  
   database: prismaAdapter(db, {
     provider: 'postgresql',
   }),
@@ -52,6 +54,8 @@ export const auth = betterAuth({
   
   trustedOrigins: [
     process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+    'https://circleday.app',
+    'https://www.circleday.app',
   ],
 })
 
