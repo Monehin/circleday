@@ -32,6 +32,17 @@ export const auth = betterAuth({
     },
   },
   
+  advanced: {
+    cookiePrefix: 'circleday',
+    useSecureCookies: process.env.NODE_ENV === 'production',
+    // Allow cookies to work on both www and non-www
+    crossSubDomainCookies: {
+      enabled: true,
+      // For circleday.app to work on both www.circleday.app and circleday.app
+      domain: process.env.NODE_ENV === 'production' ? '.circleday.app' : undefined,
+    },
+  },
+  
   user: {
     additionalFields: {
       defaultTimezone: {
