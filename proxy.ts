@@ -9,8 +9,8 @@ const authRoutes = ['/login', '/signup']
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   
-  // Check for Better Auth session cookie
-  const sessionToken = request.cookies.get('better-auth.session_token')
+  // Check for Better Auth session cookie (using our custom prefix)
+  const sessionToken = request.cookies.get('circleday.session_token')
   const isAuthenticated = !!sessionToken?.value
   
   // Redirect authenticated users away from auth pages
