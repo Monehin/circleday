@@ -29,6 +29,7 @@ export default function ReminderHistoryPage() {
   const { data: session, isPending } = useSession()
   const [group, setGroup] = useState<GroupData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const groupId = params.id as string
 
@@ -45,29 +46,56 @@ export default function ReminderHistoryPage() {
   }, [session, groupId])
 
   async function loadGroup() {
+    setLoading(true)
+    setError(null)
     try {
-      // Fetch group data using server action
+      // Fetch group data
       const response = await fetch(`/api/groups/${groupId}`)
       if (response.ok) {
         const data = await response.json()
         setGroup(data)
+      } else if (response.status === 404) {
+        setError('Group not found')
+        setTimeout(() => router.push('/groups'), 2000)
       } else {
-        router.push('/groups')
+        setError('Failed to load group')
       }
     } catch (error) {
       console.error('Failed to load group:', error)
-      router.push('/groups')
+      setError('Failed to load group')
     } finally {
       setLoading(false)
     }
   }
 
-  if (isPending || loading) {
-    return <PageLoader message="Loading reminder history..." />
+  if (isPending) {
+    return <PageLoader message="Checking authentication..." />
   }
 
-  if (!session || !group) {
+  if (!session) {
     return null
+  }
+
+  if (loading) {
+    return <PageLoader message="Loading group information..." />
+  }
+
+  if (error || !group) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-background via-primary/[0.02] to-background">
+        <DashboardHeader user={session.user} />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center py-12">
+            <h1 className="text-2xl font-bold text-foreground mb-2">
+              {error || 'Group not found'}
+            </h1>
+            <p className="text-muted-foreground">
+              Redirecting to groups page...
+            </p>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (

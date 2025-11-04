@@ -36,6 +36,7 @@ export function ReminderHistoryList({
   const [reminders, setReminders] = useState<ReminderWithDetails[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedStatus, setSelectedStatus] = useState<string>(status)
   const [selectedChannel, setSelectedChannel] = useState<string>(channel)
   const [currentPage, setCurrentPage] = useState(page)
@@ -43,11 +44,14 @@ export function ReminderHistoryList({
   const limit = 20
 
   useEffect(() => {
-    loadReminders()
+    if (groupId) {
+      loadReminders()
+    }
   }, [groupId, selectedStatus, selectedChannel, currentPage])
 
   async function loadReminders() {
     setLoading(true)
+    setError(null)
     try {
       const result = await getReminderHistory({
         groupId,
@@ -60,9 +64,16 @@ export function ReminderHistoryList({
       if (result.success && result.reminders) {
         setReminders(result.reminders as ReminderWithDetails[])
         setTotal(result.total || 0)
+      } else {
+        setError(result.error || 'Failed to load reminders')
+        setReminders([])
+        setTotal(0)
       }
     } catch (error) {
       console.error('Failed to load reminders:', error)
+      setError('Failed to load reminders')
+      setReminders([])
+      setTotal(0)
     } finally {
       setLoading(false)
     }
@@ -79,9 +90,24 @@ export function ReminderHistoryList({
 
   if (loading && reminders.length === 0) {
     return (
-      <Card className="p-12">
-        <Loader />
-      </Card>
+      <div className="space-y-4">
+        <Card className="p-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="h-4 bg-muted rounded w-32 animate-pulse" />
+            </div>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="border rounded-lg p-4 animate-pulse">
+                <div className="space-y-3">
+                  <div className="h-4 bg-muted rounded w-3/4" />
+                  <div className="h-3 bg-muted rounded w-1/2" />
+                  <div className="h-3 bg-muted rounded w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
     )
   }
 
@@ -100,7 +126,19 @@ export function ReminderHistoryList({
       {/* Results */}
       <Card className="p-6">
         <div className="space-y-4">
-          {reminders.length === 0 ? (
+          {error ? (
+            <div className="text-center py-12">
+              <p className="text-lg font-medium text-destructive mb-2">
+                {error}
+              </p>
+              <button 
+                onClick={loadReminders}
+                className="text-sm text-primary hover:underline"
+              >
+                Try again
+              </button>
+            </div>
+          ) : reminders.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-lg font-medium text-muted-foreground">
                 No reminders found
@@ -116,9 +154,20 @@ export function ReminderHistoryList({
                   Showing {(currentPage - 1) * limit + 1}-
                   {Math.min(currentPage * limit, total)} of {total} reminders
                 </p>
+                {loading && (
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Loader size="sm" />
+                    <span>Updating...</span>
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 relative">
+                {loading && (
+                  <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                    <Loader />
+                  </div>
+                )}
                 {reminders.map((reminder) => (
                   <ReminderHistoryRow
                     key={reminder.id}

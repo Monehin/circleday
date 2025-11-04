@@ -107,60 +107,66 @@ export default function DashboardPage() {
           className="grid gap-6 md:grid-cols-3 mb-8"
         >
           <motion.div variants={fadeUp}>
-            <Card className="p-6 hover:shadow-lifted transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">
-                    Groups
-                  </p>
-                  <p className="text-3xl font-bold text-primary">{stats.groupsCount}</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Create and manage celebration groups
-                  </p>
+            <Link href="/groups" className="block">
+              <Card className="p-6 hover:shadow-lifted transition-all hover:scale-[1.02] cursor-pointer">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">
+                      Groups
+                    </p>
+                    <p className="text-3xl font-bold text-primary">{stats.groupsCount}</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Create and manage celebration groups
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <span className="text-2xl">👥</span>
+                  </div>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-2xl">👥</span>
-                </div>
-              </div>
-            </Card>
+              </Card>
+            </Link>
           </motion.div>
 
           <motion.div variants={fadeUp}>
-            <Card className="p-6 hover:shadow-lifted transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">
-                    Upcoming Events
-                  </p>
-                  <p className="text-3xl font-bold text-accent">{stats.upcomingEventsCount}</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Never miss a special occasion
-                  </p>
+            <Link href="/events" className="block">
+              <Card className="p-6 hover:shadow-lifted transition-all hover:scale-[1.02] cursor-pointer">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">
+                      Upcoming Events
+                    </p>
+                    <p className="text-3xl font-bold text-accent">{stats.upcomingEventsCount}</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Never miss a special occasion
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
+                    <span className="text-2xl">🎉</span>
+                  </div>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center">
-                  <span className="text-2xl">🎉</span>
-                </div>
-              </div>
-            </Card>
+              </Card>
+            </Link>
           </motion.div>
 
           <motion.div variants={fadeUp}>
-            <Card className="p-6 hover:shadow-lifted transition-shadow">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-1">
-                    This Week
-                  </p>
-                  <p className="text-3xl font-bold text-success">{stats.eventsThisWeek}</p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Celebrations coming up soon
-                  </p>
+            <Link href="/events" className="block">
+              <Card className="p-6 hover:shadow-lifted transition-all hover:scale-[1.02] cursor-pointer">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-1">
+                      This Week
+                    </p>
+                    <p className="text-3xl font-bold text-success">{stats.eventsThisWeek}</p>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Celebrations coming up soon
+                    </p>
+                  </div>
+                  <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
+                    <span className="text-2xl">📅</span>
+                  </div>
                 </div>
-                <div className="w-12 h-12 rounded-full bg-success/10 flex items-center justify-center">
-                  <span className="text-2xl">📅</span>
-                </div>
-              </div>
-            </Card>
+              </Card>
+            </Link>
           </motion.div>
         </motion.div>
 

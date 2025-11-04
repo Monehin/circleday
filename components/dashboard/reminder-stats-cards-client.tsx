@@ -12,20 +12,27 @@ interface ReminderStatsCardsClientProps {
 export function ReminderStatsCardsClient({ groupId }: ReminderStatsCardsClientProps) {
   const [stats, setStats] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadStats()
+    if (groupId) {
+      loadStats()
+    }
   }, [groupId])
 
   async function loadStats() {
     setLoading(true)
+    setError(null)
     try {
       const result = await getReminderStats(groupId)
       if (result.success && result.stats) {
         setStats(result.stats)
+      } else {
+        setError(result.error || 'Failed to load statistics')
       }
     } catch (error) {
       console.error('Failed to load stats:', error)
+      setError('Failed to load statistics')
     } finally {
       setLoading(false)
     }
@@ -35,18 +42,33 @@ export function ReminderStatsCardsClient({ groupId }: ReminderStatsCardsClientPr
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[...Array(4)].map((_, index) => (
-          <Card key={index} className="p-6">
-            <Loader size="sm" />
+          <Card key={index} className="p-6 animate-pulse">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-muted rounded-full" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-muted rounded w-20" />
+                <div className="h-6 bg-muted rounded w-12" />
+                <div className="h-2 bg-muted rounded w-24" />
+              </div>
+            </div>
           </Card>
         ))}
       </div>
     )
   }
 
-  if (!stats) {
+  if (error || !stats) {
     return (
       <Card className="p-6">
-        <p className="text-sm text-muted-foreground">Failed to load statistics</p>
+        <div className="text-center">
+          <p className="text-sm font-medium text-destructive mb-2">{error || 'Failed to load statistics'}</p>
+          <button 
+            onClick={loadStats}
+            className="text-xs text-primary hover:underline"
+          >
+            Try again
+          </button>
+        </div>
       </Card>
     )
   }
