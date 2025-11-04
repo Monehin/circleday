@@ -13,6 +13,17 @@ export default async function proxy(request: NextRequest) {
   const sessionToken = request.cookies.get('circleday.session_token')
   const isAuthenticated = !!sessionToken?.value
   
+  // Debug logging for production
+  if (pathname === '/dashboard' || pathname.startsWith('/api/auth')) {
+    console.log('[Middleware Debug]', {
+      pathname,
+      cookies: request.cookies.getAll().map(c => c.name),
+      hasSessionToken: !!sessionToken?.value,
+      isAuthenticated,
+      env: process.env.NODE_ENV,
+    })
+  }
+  
   // Redirect authenticated users away from auth pages
   if (isAuthenticated && authRoutes.some(route => pathname.startsWith(route))) {
     return NextResponse.redirect(new URL('/dashboard', request.url))

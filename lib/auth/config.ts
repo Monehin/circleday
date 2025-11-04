@@ -4,8 +4,17 @@ import { magicLink } from 'better-auth/plugins'
 import { db } from '@/lib/db'
 import { sendMagicLinkEmail } from '@/lib/email/magic-link'
 
+// Debug configuration
+const baseURL = process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+console.log('[Better Auth Config]', {
+  baseURL,
+  BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
+  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+  NODE_ENV: process.env.NODE_ENV,
+})
+
 export const auth = betterAuth({
-  baseURL: process.env.BETTER_AUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+  baseURL,
   
   database: prismaAdapter(db, {
     provider: 'postgresql',
