@@ -27,31 +27,23 @@ function VerifyContent() {
   useEffect(() => {
     const verifyMagicLink = async () => {
       try {
-        console.log('[Verify] Starting verification...')
-        console.log('[Verify] Current URL:', window.location.href)
-        console.log('[Verify] Search params:', searchParams.toString())
-        
         // Check if user is already authenticated
         const session = await authClient.getSession()
-        console.log('[Verify] Current session:', session)
         
         if (session.data?.user) {
-          console.log('[Verify] ✅ User already authenticated')
           setStatus('success')
           setTimeout(() => {
             const redirectTo = searchParams.get('redirectTo') || '/dashboard'
-            console.log('[Verify] Redirecting to:', redirectTo)
             router.push(redirectTo)
           }, 1500)
           return
         }
 
         // If not authenticated, something went wrong
-        console.log('[Verify] ❌ No session found after verification')
         setStatus('error')
         setErrorMessage('Unable to verify your email. The link may have expired or is invalid.')
       } catch (error) {
-        console.error('[Verify] ❌ Verification error:', error)
+        console.error('Verification error:', error)
         setStatus('error')
         setErrorMessage('An error occurred during verification. Please try again.')
       }
