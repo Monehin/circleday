@@ -1,10 +1,12 @@
 'use client'
 
 import { Suspense, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader, PageLoader } from '@/components/ui/loader'
+import { Button } from '@/components/ui/button'
+import { authClient } from '@/lib/auth/client'
 
 const statusTransition = {
   duration: 0.3
@@ -18,20 +20,48 @@ const springTransition = {
 
 function VerifyContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying')
+  const [errorMessage, setErrorMessage] = useState<string>('')
 
   useEffect(() => {
-    // Better Auth handles the token verification automatically
-    // This page is shown during the process
-    const timer = setTimeout(() => {
-      setStatus('success')
-      setTimeout(() => {
-        router.push('/dashboard')
-      }, 1500)
-    }, 1000)
+    const verifyMagicLink = async () => {
+      try {
+        console.log('[Verify] Starting verification...')
+        console.log('[Verify] Current URL:', window.location.href)
+        console.log('[Verify] Search params:', searchParams.toString())
+        
+        // Check if user is already authenticated
+        const session = await authClient.getSession()
+        console.log('[Verify] Current session:', session)
+        
+        if (session.data?.user) {
+          console.log('[Verify] ✅ User already authenticated')
+          setStatus('success')
+          setTimeout(() => {
+            const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+            console.log('[Verify] Redirecting to:', redirectTo)
+            router.push(redirectTo)
+          }, 1500)
+          return
+        }
+
+        // If not authenticated, something went wrong
+        console.log('[Verify] ❌ No session found after verification')
+        setStatus('error')
+        setErrorMessage('Unable to verify your email. The link may have expired or is invalid.')
+      } catch (error) {
+        console.error('[Verify] ❌ Verification error:', error)
+        setStatus('error')
+        setErrorMessage('An error occurred during verification. Please try again.')
+      }
+    }
+
+    // Wait a bit for Better Auth to process the verification
+    const timer = setTimeout(verifyMagicLink, 1500)
 
     return () => clearTimeout(timer)
-  }, [router])
+  }, [router, searchParams])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-primary/[0.02] to-background p-4">
@@ -101,12 +131,23 @@ function VerifyContent() {
                 </motion.div>
                 <CardTitle className="text-destructive">Verification failed</CardTitle>
                 <CardDescription>
-                  The link may have expired or is invalid.
+                  {errorMessage || 'The link may have expired or is invalid.'}
                 </CardDescription>
               </motion.div>
             )}
           </AnimatePresence>
         </CardHeader>
+        {status === 'error' && (
+          <CardContent>
+            <Button
+              variant="default"
+              className="w-full"
+              onClick={() => router.push('/login')}
+            >
+              Try again
+            </Button>
+          </CardContent>
+        )}
       </Card>
     </div>
   )
