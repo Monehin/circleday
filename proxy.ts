@@ -10,7 +10,10 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   
   // Check for Better Auth session cookie (using our custom prefix)
-  const sessionToken = request.cookies.get('circleday.session_token')
+  // In production with secure cookies, Better Auth prefixes cookies with __Secure-
+  const sessionToken =
+    request.cookies.get('__Secure-circleday.session_token') ||
+    request.cookies.get('circleday.session_token')
   const isAuthenticated = !!sessionToken?.value
   
   // Debug logging for production
