@@ -200,6 +200,24 @@ export async function getGroupById(groupId: string) {
       return { error: 'Group not found' }
     }
 
+    // Fetch event counts for all contacts in this group
+    const contactIds = group.memberships.map(m => m.contact.id)
+    const eventCounts = await db.event.groupBy({
+      by: ['contactId'],
+      where: {
+        contactId: { in: contactIds },
+        deletedAt: null,
+      },
+      _count: {
+        id: true,
+      },
+    })
+
+    // Create a map of contactId -> event count
+    const eventCountMap = new Map(
+      eventCounts.map(ec => [ec.contactId, ec._count.id])
+    )
+
     return { 
       success: true, 
       group: {
@@ -208,6 +226,8 @@ export async function getGroupById(groupId: string) {
         ownerId: group.ownerId,
         owner: group.owner,
         defaultTimezone: group.defaultTimezone,
+        maxEventsPerMember: group.maxEventsPerMember,
+        remindersEnabled: group.remindersEnabled,
         createdAt: group.createdAt,
         updatedAt: group.updatedAt,
         memberCount: group._count.memberships,
@@ -218,6 +238,7 @@ export async function getGroupById(groupId: string) {
           contact: m.contact,
           user: m.user,
           createdAt: m.createdAt,
+          eventCount: eventCountMap.get(m.contact.id) || 0,
         })),
       }
     }
@@ -441,6 +462,64 @@ export async function addMember(data: z.infer<typeof addMemberSchema>) {
       return { error: error.message }
     }
     return { error: 'Failed to add member' }
+  }
+}
+
+/**
+ * Toggle reminders for a group
+ */
+export async function toggleGroupReminders(groupId: string, enabled: boolean) {
+  try {
+    // Get session
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    })
+
+    if (!session?.user) {
+      return { error: 'Unauthorized' }
+    }
+
+    // Check if user is the owner
+    const group = await db.group.findFirst({
+      where: {
+        id: groupId,
+        ownerId: session.user.id,
+        deletedAt: null,
+      },
+    })
+
+    if (!group) {
+      return { error: 'Group not found or you do not have permission' }
+    }
+
+    // Update the group
+    const updated = await db.group.update({
+      where: { id: groupId },
+      data: { remindersEnabled: enabled },
+    })
+
+    // Create audit log
+    await db.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        groupId,
+        method: 'UPDATE',
+        entity: 'Group',
+        entityId: groupId,
+        diffJson: {
+          action: 'toggle_reminders',
+          enabled,
+        },
+      },
+    })
+
+    return {
+      success: true,
+      remindersEnabled: updated.remindersEnabled,
+    }
+  } catch (error) {
+    console.error('Failed to toggle reminders:', error)
+    return { error: 'Failed to toggle reminders' }
   }
 }
 

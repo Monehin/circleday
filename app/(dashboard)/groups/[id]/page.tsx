@@ -19,9 +19,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageLoader, Loader } from '@/components/ui/loader'
-import { getGroupById, updateGroup } from '@/lib/actions/groups'
+import { getGroupById, updateGroup, toggleGroupReminders } from '@/lib/actions/groups'
 import Link from 'next/link'
 import { CalendarPlus, Link2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 const updateGroupSchema = z.object({
   name: z.string().min(2).max(50).trim(),
@@ -55,6 +56,7 @@ type GroupMember = {
     email: string
   } | null
   createdAt: Date
+  eventCount: number
 }
 
 type GroupData = {
@@ -67,6 +69,8 @@ type GroupData = {
     email: string
   }
   defaultTimezone: string
+  maxEventsPerMember: number | null
+  remindersEnabled: boolean
   createdAt: Date
   updatedAt: Date
   memberCount: number
@@ -86,6 +90,7 @@ export default function GroupDetailPage() {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false)
   const [addEventsContact, setAddEventsContact] = useState<{ id: string; name: string; email?: string | null } | null>(null)
   const [shareEventLinkContact, setShareEventLinkContact] = useState<{ id: string; name: string; email?: string | null; phone?: string | null } | null>(null)
+  const [isTogglingReminders, setIsTogglingReminders] = useState(false)
 
   const {
     register,
@@ -120,6 +125,25 @@ export default function GroupDetailPage() {
       router.push('/groups')
     }
     setIsLoading(false)
+  }
+
+  const handleToggleReminders = async () => {
+    if (!group) return
+
+    setIsTogglingReminders(true)
+    try {
+      const result = await toggleGroupReminders(groupId, !group.remindersEnabled)
+      if (result.success) {
+        setGroup({ ...group, remindersEnabled: result.remindersEnabled })
+        toast.success(`Reminders ${result.remindersEnabled ? 'enabled' : 'disabled'}`)
+      } else {
+        toast.error(result.error || 'Failed to toggle reminders')
+      }
+    } catch (error) {
+      toast.error('Failed to toggle reminders')
+    } finally {
+      setIsTogglingReminders(false)
+    }
   }
 
   const onSubmit = async (data: UpdateGroupInput) => {
@@ -352,24 +376,59 @@ export default function GroupDetailPage() {
           className="mb-8"
         >
           <Card className="p-6 border-border/50 shadow-lifted">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col gap-6">
+              {/* Title Section */}
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-1">Quick Actions</h3>
                 <p className="text-sm text-muted-foreground">
                   Manage group settings and preferences
                 </p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" asChild>
-                  <Link href={`/groups/${groupId}/reminders`}>
-                    ⏰ Manage Reminders
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href={`/groups/${groupId}/history`}>
-                    📊 View History
-                  </Link>
-                </Button>
+
+              {/* Toggle and Buttons */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                {/* Reminders Toggle */}
+                {canEdit && (
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleToggleReminders}
+                      disabled={isTogglingReminders}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        group.remindersEnabled ? 'bg-primary' : 'bg-muted'
+                      } ${isTogglingReminders ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      role="switch"
+                      aria-checked={group.remindersEnabled}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          group.remindersEnabled ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                    <div>
+                      <p className="text-sm font-medium text-foreground">
+                        Reminders {group.remindersEnabled ? 'Enabled' : 'Disabled'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {group.remindersEnabled ? 'Members will receive reminders' : 'No reminders will be sent'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" asChild>
+                    <Link href={`/groups/${groupId}/reminders`}>
+                      ⏰ Manage Reminders
+                    </Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href={`/groups/${groupId}/history`}>
+                      📊 View History
+                    </Link>
+                  </Button>
+                </div>
               </div>
             </div>
           </Card>
@@ -419,6 +478,17 @@ export default function GroupDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
+                      {/* Event Count Badge */}
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        group.maxEventsPerMember && member.eventCount >= group.maxEventsPerMember
+                          ? 'bg-orange-100 text-orange-700 border border-orange-200'
+                          : 'bg-blue-50 text-blue-700 border border-blue-200'
+                      }`}>
+                        {group.maxEventsPerMember 
+                          ? `${member.eventCount}/${group.maxEventsPerMember} events`
+                          : `${member.eventCount} event${member.eventCount !== 1 ? 's' : ''}`
+                        }
+                      </span>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         member.role === 'OWNER' 
                           ? 'bg-primary/10 text-primary' 
