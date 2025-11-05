@@ -41,6 +41,7 @@ model User {
   orders            Order[]
   potContributions  PotContribution[]
   eventInviteTokens EventInviteToken[] @relation("EventInviteTokenCreator")
+  scheduledSends    ScheduledSend[]
 
   @@index([email])
   @@index([phone])
@@ -123,9 +124,15 @@ model VerificationCode {
   @@map("verification_codes")
 }
 
+enum GroupType {
+  PERSONAL  // Only owner receives all reminders
+  TEAM      // All members except person being celebrated
+}
+
 model Group {
   id                  String    @id @default(cuid())
   name                String
+  type                GroupType @default(PERSONAL)
   ownerId             String
   defaultTimezone     String    @default("UTC")
   quietHours          Json? // { start: "08:00", end: "20:00" }
@@ -199,17 +206,18 @@ model Contact {
 }
 
 model Event {
-  id        String    @id @default(cuid())
-  contactId String
-  type      EventType
-  title     String? // Custom title for CUSTOM events
-  date      DateTime // Store as MM-DD (year optional for birthdays)
-  yearKnown Boolean   @default(true)
-  repeat    Boolean   @default(true)
-  notes     String? // Story seeds
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id           String    @id @default(cuid())
+  contactId    String
+  type         EventType
+  title        String?   // Custom title for CUSTOM events
+  date         DateTime  // Store as MM-DD (year optional for birthdays)
+  yearKnown    Boolean   @default(true)
+  repeat       Boolean   @default(true)
+  notes        String?   // Story seeds
+  isGroupEvent Boolean   @default(false) // For future group-wide events
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   // Relations
   contact        Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -242,23 +250,25 @@ model ReminderRule {
 }
 
 model ScheduledSend {
-  id             String     @id @default(cuid())
-  eventId        String
-  targetDate     DateTime // The actual event date (YYYY-MM-DD)
-  offset         Int // -7, -1, 0
-  channel        ChannelType
-  dueAtUtc       DateTime // When to send (UTC)
-  status         SendStatus @default(PENDING)
-  idempotencyKey String     @unique
-  sentAt         DateTime?
-  failedAt       DateTime?
-  retryCount     Int        @default(0)
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id              String      @id @default(cuid())
+  eventId         String
+  recipientUserId String      // Track who should receive this reminder
+  targetDate      DateTime    // The actual event date (YYYY-MM-DD)
+  offset          Int         // -7, -1, 0
+  channel         ChannelType
+  dueAtUtc        DateTime    // When to send (UTC)
+  status          SendStatus  @default(PENDING)
+  idempotencyKey  String      @unique
+  sentAt          DateTime?
+  failedAt        DateTime?
+  retryCount      Int         @default(0)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 
   // Relations
-  event    Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  sendLogs SendLog[]
+  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  recipientUser User      @relation(fields: [recipientUserId], references: [id], onDelete: Cascade)
+  sendLogs      SendLog[]
 
   @@index([dueAtUtc, status])
   @@index([status, dueAtUtc])
@@ -266,6 +276,7 @@ model ScheduledSend {
   @@index([eventId, targetDate])
   @@index([idempotencyKey])
   @@index([status])
+  @@index([recipientUserId])
   @@map("scheduled_sends")
 }
 
