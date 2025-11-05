@@ -40,6 +40,7 @@ model User {
   proposedChanges   ProposedChange[]  @relation("ProposedBy")
   orders            Order[]
   potContributions  PotContribution[]
+  eventInviteTokens EventInviteToken[] @relation("EventInviteTokenCreator")
 
   @@index([email])
   @@index([phone])
@@ -187,6 +188,7 @@ model Contact {
   proposedChanges  ProposedChange[]
   orders           Order[]          @relation("OrderCelebrant")
   pots             Pot[]
+  eventInviteTokens EventInviteToken[]
 
   @@index([email])
   @@index([phone])
@@ -386,6 +388,30 @@ model ProposedChange {
   @@index([proposedBy])
   @@index([status, createdAt])
   @@map("proposed_changes")
+}
+
+model EventInviteToken {
+  id        String    @id @default(cuid())
+  token     String    @unique // URL-safe random token
+  contactId String
+  groupId   String
+  createdBy String
+  expiresAt DateTime
+  usedAt    DateTime? // When member submitted (null = not used)
+  maxUses   Int       @default(1) // Allow resubmission?
+  useCount  Int       @default(0) // Track how many times used
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  creator User    @relation("EventInviteTokenCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([contactId])
+  @@index([expiresAt])
+  @@index([createdBy])
+  @@map("event_invite_tokens")
 }
 
 model NudgeCircle {
