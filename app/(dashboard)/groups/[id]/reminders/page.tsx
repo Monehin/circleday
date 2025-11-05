@@ -20,7 +20,7 @@ import {
   BreadcrumbSeparator 
 } from '@/components/ui/breadcrumb'
 import { getReminderRules, deleteReminderRule, type ReminderRuleListItem } from '@/lib/actions/reminder-rules'
-import { getGroupById } from '@/lib/actions/groups'
+import { getGroupById, toggleGroupReminders } from '@/lib/actions/groups'
 import { toast } from 'sonner'
 import { AddReminderRuleModal } from '@/components/dashboard/add-reminder-rule-modal'
 
@@ -44,6 +44,7 @@ export default function GroupRemindersPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [isTogglingReminders, setIsTogglingReminders] = useState(false)
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -81,6 +82,25 @@ export default function GroupRemindersPage() {
       toast.error('Failed to load reminder rules')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleToggleReminders = async () => {
+    if (!group) return
+
+    setIsTogglingReminders(true)
+    try {
+      const result = await toggleGroupReminders(groupId, !group.remindersEnabled)
+      if (result.success) {
+        setGroup({ ...group, remindersEnabled: result.remindersEnabled })
+        toast.success(`Reminders ${result.remindersEnabled ? 'enabled' : 'disabled'}`)
+      } else {
+        toast.error(result.error || 'Failed to toggle reminders')
+      }
+    } catch (error) {
+      toast.error('Failed to toggle reminders')
+    } finally {
+      setIsTogglingReminders(false)
     }
   }
 
@@ -171,6 +191,55 @@ export default function GroupRemindersPage() {
             </Button>
           )}
         </motion.div>
+
+        {/* Reminder Toggle */}
+        {isOwnerOrAdmin && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <Card className="p-6 border-border/50 shadow-lifted">
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={handleToggleReminders}
+                  disabled={isTogglingReminders || rules.length === 0}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                    group.remindersEnabled ? 'bg-primary' : 'bg-muted'
+                  } ${isTogglingReminders || rules.length === 0 ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  role="switch"
+                  aria-checked={group.remindersEnabled}
+                  title={rules.length === 0 ? 'Add reminder rules first to enable reminders' : ''}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      group.remindersEnabled ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Reminders {group.remindersEnabled ? 'Enabled' : 'Disabled'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {rules.length === 0 
+                      ? 'Add reminder rules first to enable reminders'
+                      : group.remindersEnabled 
+                        ? 'Members will receive reminders based on the rules below' 
+                        : 'No reminders will be sent until enabled'}
+                  </p>
+                </div>
+                {rules.length === 0 && (
+                  <div className="text-xs px-3 py-1 rounded-full bg-orange-100 text-orange-700 border border-orange-200">
+                    No rules set
+                  </div>
+                )}
+              </div>
+            </Card>
+          </motion.div>
+        )}
 
         {/* Rules List */}
         {rules.length === 0 ? (

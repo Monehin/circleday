@@ -68,7 +68,14 @@ export async function scheduleUpcomingReminders(): Promise<{
 
   try {
     // Get all active reminder rules with their groups, events, and members
+    // Only process groups where reminders are enabled
     const rules = await db.reminderRule.findMany({
+      where: {
+        group: {
+          remindersEnabled: true,
+          deletedAt: null,
+        },
+      },
       include: {
         group: {
           include: {
@@ -211,6 +218,12 @@ export async function getPendingScheduledSendsForToday() {
       status: {
         in: ['PENDING', 'QUEUED'],
       },
+      reminderRule: {
+        group: {
+          remindersEnabled: true,
+          deletedAt: null,
+        },
+      },
     },
     include: {
       event: {
@@ -234,6 +247,12 @@ export async function getFailedSendsToRetry(maxRetries: number = 3) {
       status: 'FAILED',
       retryCount: {
         lt: maxRetries,
+      },
+      reminderRule: {
+        group: {
+          remindersEnabled: true,
+          deletedAt: null,
+        },
       },
     },
     include: {
