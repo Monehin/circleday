@@ -25,6 +25,7 @@ const createGroupSchema = z.object({
     .max(50, 'Group name must be less than 50 characters')
     .trim(),
   defaultTimezone: z.string().optional(),
+  maxEventsPerMember: z.number().int().positive().optional().nullable(),
 })
 
 type CreateGroupInput = z.infer<typeof createGroupSchema>
@@ -167,6 +168,37 @@ export default function NewGroupPage() {
                 </select>
                 <p className="text-xs text-muted-foreground">
                   This will be used for scheduling reminders
+                </p>
+              </div>
+
+              {/* Max Events Per Member */}
+              <div className="space-y-2">
+                <Label htmlFor="maxEventsPerMember" className="text-sm font-medium">
+                  Maximum Events Per Member
+                </Label>
+                <Input
+                  id="maxEventsPerMember"
+                  type="number"
+                  min="1"
+                  placeholder="Leave empty for unlimited"
+                  {...register('maxEventsPerMember', {
+                    setValueAs: (v) => v === '' || v === null ? null : parseInt(v, 10),
+                  })}
+                  disabled={isCreating}
+                  className="h-11"
+                  aria-invalid={errors.maxEventsPerMember ? 'true' : 'false'}
+                />
+                {errors.maxEventsPerMember && (
+                  <motion.p
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="text-sm text-destructive"
+                  >
+                    {errors.maxEventsPerMember.message}
+                  </motion.p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Limit how many events each member can have (birthdays, anniversaries, etc.)
                 </p>
               </div>
 

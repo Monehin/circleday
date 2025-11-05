@@ -368,7 +368,50 @@ export async function submitEventsViaToken(input: z.infer<typeof SubmitEventsInp
     const contactId = tokenValidation.data!.contact.id
     const groupId = tokenValidation.data!.groupId
 
-    // 3. Create events in a transaction
+    // 3. Check event limit if set
+    const group = await db.group.findUnique({
+      where: { id: groupId },
+      select: { maxEventsPerMember: true },
+    })
+
+    if (group?.maxEventsPerMember) {
+      // Count existing events for this contact
+      const existingEventCount = await db.event.count({
+        where: {
+          contactId,
+          deletedAt: null,
+        },
+      })
+
+      // Calculate total after adding new events
+      const birthdayIndex = events.findIndex(e => e.type === 'BIRTHDAY')
+      const anniversaryIndex = events.findIndex(e => e.type === 'ANNIVERSARY')
+      const customEvents = events.filter(e => e.type === 'CUSTOM')
+      
+      const existingBirthday = await db.event.findFirst({
+        where: { contactId, type: 'BIRTHDAY', deletedAt: null },
+      })
+      const existingAnniversary = await db.event.findFirst({
+        where: { contactId, type: 'ANNIVERSARY', deletedAt: null },
+      })
+
+      // Count new events that will actually be added
+      const newEventsCount = 
+        (birthdayIndex >= 0 && !existingBirthday ? 1 : 0) +
+        (anniversaryIndex >= 0 && !existingAnniversary ? 1 : 0) +
+        customEvents.length
+
+      const totalAfterAdd = existingEventCount + newEventsCount
+
+      if (totalAfterAdd > group.maxEventsPerMember) {
+        return {
+          success: false,
+          error: `You can have a maximum of ${group.maxEventsPerMember} events. You currently have ${existingEventCount}. Adding ${newEventsCount} more would exceed the limit.`,
+        }
+      }
+    }
+
+    // 4. Create events in a transaction
     const result = await db.$transaction(async (tx) => {
       const createdEvents = []
 
@@ -412,7 +455,7 @@ export async function submitEventsViaToken(input: z.infer<typeof SubmitEventsInp
         createdEvents.push(created)
       }
 
-      // 4. Update token usage
+      // 5. Update token usage
       const updatedToken = await tx.eventInviteToken.update({
         where: { token },
         data: {
@@ -421,7 +464,7 @@ export async function submitEventsViaToken(input: z.infer<typeof SubmitEventsInp
         },
       })
 
-      // 5. Create audit log (from system/token)
+      // 6. Create audit log (from system/token)
       await tx.auditLog.create({
         data: {
           actorId: updatedToken.createdBy,
@@ -441,7 +484,7 @@ export async function submitEventsViaToken(input: z.infer<typeof SubmitEventsInp
       return createdEvents
     })
 
-    // 6. Revalidate relevant pages
+    // 7. Revalidate relevant pages
     revalidatePath(`/groups/${groupId}`)
     revalidatePath('/events')
 

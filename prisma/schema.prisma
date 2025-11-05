@@ -124,15 +124,16 @@ model VerificationCode {
 }
 
 model Group {
-  id              String    @id @default(cuid())
-  name            String
-  ownerId         String
-  defaultTimezone String    @default("UTC")
-  quietHours      Json? // { start: "08:00", end: "20:00" }
-  leapDayPolicy   String    @default("FEB_28") // FEB_28 or MAR_01
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  deletedAt       DateTime?
+  id                  String    @id @default(cuid())
+  name                String
+  ownerId             String
+  defaultTimezone     String    @default("UTC")
+  quietHours          Json? // { start: "08:00", end: "20:00" }
+  leapDayPolicy       String    @default("FEB_28") // FEB_28 or MAR_01
+  maxEventsPerMember  Int? // Maximum events per member (null = unlimited)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  deletedAt           DateTime?
 
   // Relations
   owner          User             @relation("GroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)

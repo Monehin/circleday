@@ -106,7 +106,46 @@ export async function createBulkEvents(input: BulkEventInput) {
       }
     }
 
-    // 5. Create all events in a transaction
+    // 5. Check event limit if set
+    if (membership.group.maxEventsPerMember) {
+      // Count existing events for this contact
+      const existingEventCount = await db.event.count({
+        where: {
+          contactId,
+          deletedAt: null,
+        },
+      })
+
+      // Calculate total after adding new events
+      // For non-custom events, we update existing ones, so count unique types
+      const birthdayIndex = events.findIndex(e => e.type === 'BIRTHDAY')
+      const anniversaryIndex = events.findIndex(e => e.type === 'ANNIVERSARY')
+      const customEvents = events.filter(e => e.type === 'CUSTOM')
+      
+      const existingBirthday = await db.event.findFirst({
+        where: { contactId, type: 'BIRTHDAY', deletedAt: null },
+      })
+      const existingAnniversary = await db.event.findFirst({
+        where: { contactId, type: 'ANNIVERSARY', deletedAt: null },
+      })
+
+      // Count new events that will actually be added
+      const newEventsCount = 
+        (birthdayIndex >= 0 && !existingBirthday ? 1 : 0) +
+        (anniversaryIndex >= 0 && !existingAnniversary ? 1 : 0) +
+        customEvents.length
+
+      const totalAfterAdd = existingEventCount + newEventsCount
+
+      if (totalAfterAdd > membership.group.maxEventsPerMember) {
+        return {
+          success: false,
+          error: `This member can have a maximum of ${membership.group.maxEventsPerMember} events. They currently have ${existingEventCount}. Adding ${newEventsCount} more would exceed the limit.`,
+        }
+      }
+    }
+
+    // 6. Create all events in a transaction
     const createdEvents = await db.$transaction(async (tx) => {
       const results = []
 
