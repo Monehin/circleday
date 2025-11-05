@@ -14,6 +14,7 @@ import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { AddMemberModal } from '@/components/dashboard/add-member-modal'
 import { AddEventsModal } from '@/components/dashboard/add-events-modal'
 import { ShareEventLinkModal } from '@/components/dashboard/share-event-link-modal'
+import { ViewEventsModal } from '@/components/dashboard/view-events-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -90,6 +91,7 @@ export default function GroupDetailPage() {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false)
   const [addEventsContact, setAddEventsContact] = useState<{ id: string; name: string; email?: string | null } | null>(null)
   const [shareEventLinkContact, setShareEventLinkContact] = useState<{ id: string; name: string; email?: string | null; phone?: string | null } | null>(null)
+  const [viewEventsContact, setViewEventsContact] = useState<{ id: string; name: string } | null>(null)
   const [isTogglingReminders, setIsTogglingReminders] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -499,17 +501,24 @@ export default function GroupDetailPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      {/* Event Count Badge */}
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                        group.maxEventsPerMember && member.eventCount >= group.maxEventsPerMember
-                          ? 'bg-orange-100 text-orange-700 border border-orange-200'
-                          : 'bg-blue-50 text-blue-700 border border-blue-200'
-                      }`}>
+                      {/* Event Count Badge - Clickable */}
+                      <button
+                        onClick={() => setViewEventsContact({
+                          id: member.contact.id,
+                          name: member.contact.name,
+                        })}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-all hover:scale-105 cursor-pointer ${
+                          group.maxEventsPerMember && member.eventCount >= group.maxEventsPerMember
+                            ? 'bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200'
+                            : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                        }`}
+                        title={`View ${member.eventCount} event${member.eventCount !== 1 ? 's' : ''} for ${member.contact.name}`}
+                      >
                         {group.maxEventsPerMember 
                           ? `${member.eventCount}/${group.maxEventsPerMember} events`
                           : `${member.eventCount} event${member.eventCount !== 1 ? 's' : ''}`
                         }
-                      </span>
+                      </button>
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         member.role === 'OWNER' 
                           ? 'bg-primary/10 text-primary' 
@@ -635,6 +644,14 @@ export default function GroupDetailPage() {
           onClose={() => setShareEventLinkContact(null)}
           contact={shareEventLinkContact}
           groupId={groupId}
+        />
+      )}
+
+      {viewEventsContact && (
+        <ViewEventsModal
+          isOpen={true}
+          onClose={() => setViewEventsContact(null)}
+          contact={viewEventsContact}
         />
       )}
 
