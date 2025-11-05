@@ -12,6 +12,8 @@ import { z } from 'zod'
 import { useSession } from '@/lib/auth/client'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { AddMemberModal } from '@/components/dashboard/add-member-modal'
+import { AddEventsModal } from '@/components/dashboard/add-events-modal'
+import { ShareEventLinkModal } from '@/components/dashboard/share-event-link-modal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -19,6 +21,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { PageLoader, Loader } from '@/components/ui/loader'
 import { getGroupById, updateGroup } from '@/lib/actions/groups'
 import Link from 'next/link'
+import { CalendarPlus, Link2 } from 'lucide-react'
 
 const updateGroupSchema = z.object({
   name: z.string().min(2).max(50).trim(),
@@ -81,6 +84,8 @@ export default function GroupDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false)
+  const [addEventsContact, setAddEventsContact] = useState<{ id: string; name: string; email?: string | null } | null>(null)
+  const [shareEventLinkContact, setShareEventLinkContact] = useState<{ id: string; name: string; email?: string | null; phone?: string | null } | null>(null)
 
   const {
     register,
@@ -413,7 +418,7 @@ export default function GroupDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                         member.role === 'OWNER' 
                           ? 'bg-primary/10 text-primary' 
@@ -428,6 +433,39 @@ export default function GroupDetailPage() {
                           Registered
                         </span>
                       )}
+                      {canEdit && (
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setAddEventsContact({
+                              id: member.contact.id,
+                              name: member.contact.name,
+                              email: member.contact.email,
+                            })}
+                            className="h-8 px-3"
+                            title="Add events for this member"
+                          >
+                            <CalendarPlus className="h-4 w-4 mr-1" />
+                            Add Events
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShareEventLinkContact({
+                              id: member.contact.id,
+                              name: member.contact.name,
+                              email: member.contact.email,
+                              phone: member.contact.phone,
+                            })}
+                            className="h-8 px-3"
+                            title="Share event link with this member"
+                          >
+                            <Link2 className="h-4 w-4 mr-1" />
+                            Share Link
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ))}
@@ -437,7 +475,7 @@ export default function GroupDetailPage() {
         </motion.div>
       </main>
 
-      {/* Add Member Modal */}
+      {/* Modals */}
       <AddMemberModal
         groupId={groupId}
         isOpen={isAddMemberModalOpen}
@@ -447,6 +485,28 @@ export default function GroupDetailPage() {
           loadGroup()
         }}
       />
+
+      {addEventsContact && (
+        <AddEventsModal
+          isOpen={true}
+          onClose={() => setAddEventsContact(null)}
+          contact={addEventsContact}
+          groupId={groupId}
+          onSuccess={() => {
+            // Reload group data to show updated events
+            loadGroup()
+          }}
+        />
+      )}
+
+      {shareEventLinkContact && (
+        <ShareEventLinkModal
+          isOpen={true}
+          onClose={() => setShareEventLinkContact(null)}
+          contact={shareEventLinkContact}
+          groupId={groupId}
+        />
+      )}
     </div>
   )
 }
