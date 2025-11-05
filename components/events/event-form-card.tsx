@@ -30,9 +30,19 @@ interface EventFormCardProps {
   onAdd: () => void
   onCancel: () => void
   currentYear?: number
+  addButtonText?: string
+  cancelButtonText?: string
 }
 
-export function EventFormCard({ event, onChange, onAdd, onCancel, currentYear = new Date().getFullYear() }: EventFormCardProps) {
+export function EventFormCard({ 
+  event, 
+  onChange, 
+  onAdd, 
+  onCancel, 
+  currentYear = new Date().getFullYear(),
+  addButtonText = 'Add to List',
+  cancelButtonText = 'Cancel'
+}: EventFormCardProps) {
   const getColorClasses = (color: string): { bg: string; border: string; text: string } => {
     const colors: Record<string, { bg: string; border: string; text: string }> = {
       violet: { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' },
@@ -170,7 +180,7 @@ export function EventFormCard({ event, onChange, onAdd, onCancel, currentYear = 
             onClick={onCancel}
             className="flex-1"
           >
-            Cancel
+            {cancelButtonText}
           </Button>
           <Button
             type="button"
@@ -178,7 +188,7 @@ export function EventFormCard({ event, onChange, onAdd, onCancel, currentYear = 
             className="flex-1 bg-green-600 hover:bg-green-700"
           >
             <Check className="mr-2 h-4 w-4" />
-            Add to List
+            {addButtonText}
           </Button>
         </div>
       </div>

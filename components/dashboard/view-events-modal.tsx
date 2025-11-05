@@ -10,10 +10,12 @@
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { getContactEvents } from '@/lib/actions/events'
+import { getContactEvents, deleteEvent } from '@/lib/actions/events'
 import { Loader2 } from 'lucide-react'
 import { EventSummaryList, type SavedEvent } from '@/components/events/event-summary-list'
 import { EVENT_TEMPLATES } from '@/components/ui/event-type-selector'
+import { EditEventModal } from '@/components/dashboard/edit-event-modal'
+import { toast } from 'sonner'
 
 interface ViewEventsModalProps {
   isOpen: boolean
@@ -27,6 +29,8 @@ interface ViewEventsModalProps {
 export function ViewEventsModal({ isOpen, onClose, contact }: ViewEventsModalProps) {
   const [events, setEvents] = useState<SavedEvent[]>([])
   const [loading, setLoading] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<any | null>(null)
+  const [rawEvents, setRawEvents] = useState<any[]>([]) // Store raw DB events for editing
 
   // Load events when modal opens
   useEffect(() => {
@@ -39,6 +43,8 @@ export function ViewEventsModal({ isOpen, onClose, contact }: ViewEventsModalPro
   useEffect(() => {
     if (!isOpen) {
       setEvents([])
+      setRawEvents([])
+      setEditingEvent(null)
     }
   }, [isOpen])
 
@@ -47,6 +53,9 @@ export function ViewEventsModal({ isOpen, onClose, contact }: ViewEventsModalPro
     try {
       const result = await getContactEvents(contact.id)
       if (result.success && result.events) {
+        // Store raw events for editing
+        setRawEvents(result.events)
+        
         // Map database events to SavedEvent format for consistent display
         const mappedEvents: SavedEvent[] = result.events.map((event) => {
           const date = new Date(event.date)
@@ -81,6 +90,33 @@ export function ViewEventsModal({ isOpen, onClose, contact }: ViewEventsModalPro
     }
   }
 
+  const handleEdit = (event: SavedEvent) => {
+    // Find the raw event data
+    const rawEvent = rawEvents.find(e => e.id === event.id)
+    if (rawEvent) {
+      setEditingEvent(rawEvent)
+    }
+  }
+
+  const handleDelete = async (eventId: string) => {
+    if (!confirm('Are you sure you want to delete this event?')) {
+      return
+    }
+
+    try {
+      const result = await deleteEvent(eventId)
+      if (result.success) {
+        toast.success('Event deleted successfully!')
+        await loadEvents() // Reload the list
+      } else {
+        toast.error(result.error || 'Failed to delete event')
+      }
+    } catch (error) {
+      console.error('Failed to delete event:', error)
+      toast.error('Failed to delete event')
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -110,9 +146,11 @@ export function ViewEventsModal({ isOpen, onClose, contact }: ViewEventsModalPro
           ) : (
             <EventSummaryList 
               events={events}
+              onRemove={handleDelete}
+              onEdit={handleEdit}
               title={`All Events (${events.length})`}
               variant="info"
-              readonly={true}
+              readonly={false}
             />
           )}
         </div>
@@ -123,6 +161,20 @@ export function ViewEventsModal({ isOpen, onClose, contact }: ViewEventsModalPro
           </Button>
         </div>
       </DialogContent>
+
+      {/* Edit Event Modal */}
+      {editingEvent && (
+        <EditEventModal
+          isOpen={true}
+          onClose={() => setEditingEvent(null)}
+          event={editingEvent}
+          contactName={contact.name}
+          onSuccess={() => {
+            setEditingEvent(null)
+            loadEvents()
+          }}
+        />
+      )}
     </Dialog>
   )
 }
