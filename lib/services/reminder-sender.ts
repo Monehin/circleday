@@ -19,38 +19,46 @@ type ScheduledSendWithEvent = ScheduledSend & {
  * Get recipient details for a scheduled send
  */
 async function getRecipientDetails(scheduledSend: ScheduledSendWithEvent) {
-  // Find the group membership for this event's contact
-  const membership = await db.membership.findFirst({
-    where: {
-      contactId: scheduledSend.event.contactId,
-      status: 'ACTIVE',
-    },
+  // Use the stored recipient user ID
+  const user = await db.user.findUnique({
+    where: { id: scheduledSend.recipientUserId },
     include: {
-      user: true,
-      group: true,
-    },
+      memberships: {
+        where: {
+          status: 'ACTIVE',
+        },
+        include: { 
+          group: true,
+          contact: true,
+        }
+      }
+    }
   })
-
-  if (!membership || !membership.user) {
+  
+  if (!user) {
     return null
   }
-
-  // Determine recipient identifier based on channel
+  
+  // Get the group name - use the first active membership's group
+  // In practice, the event will be in one of the groups the user is a member of
+  const groupName = user.memberships[0]?.group.name || 'Your Group'
+  
+  // Determine recipient identifier
   let recipientIdentifier: string | null = null
   if (scheduledSend.channel === 'EMAIL') {
-    recipientIdentifier = membership.user.email
+    recipientIdentifier = user.email
   } else if (scheduledSend.channel === 'SMS') {
-    recipientIdentifier = membership.user.phone
+    recipientIdentifier = user.phone
   }
-
+  
   if (!recipientIdentifier) {
     return null
   }
-
+  
   return {
     recipientIdentifier,
-    recipientName: membership.user.name || membership.user.email,
-    groupName: membership.group.name,
+    recipientName: user.name || user.email,
+    groupName,
   }
 }
 

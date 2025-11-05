@@ -130,33 +130,59 @@ export async function scheduleUpcomingReminders(): Promise<{
 
           if (channels.length === 0) continue
 
-          // Get all group members who should receive this reminder
-          for (const membership of rule.group.memberships) {
-            if (!membership.user) continue // Skip if no user linked
+          // Get recipients based on group type
+          let recipients: Array<{ userId: string; email: string; phone: string | null }> = []
 
+          if (rule.group.type === 'PERSONAL') {
+            // PERSONAL: Only send to owner
+            const ownerMembership = rule.group.memberships.find(
+              m => m.userId === rule.group.ownerId && m.user
+            )
+            if (ownerMembership?.user) {
+              recipients = [{
+                userId: ownerMembership.user.id,
+                email: ownerMembership.user.email,
+                phone: ownerMembership.user.phone,
+              }]
+            }
+          } else if (rule.group.type === 'TEAM') {
+            // TEAM: Send to all members EXCEPT the person being celebrated
+            recipients = rule.group.memberships
+              .filter(m => 
+                m.user &&
+                m.contactId !== event.contactId // Exclude person being celebrated
+              )
+              .map(m => ({
+                userId: m.user!.id,
+                email: m.user!.email,
+                phone: m.user!.phone,
+              }))
+          }
+
+          // Process each recipient
+          for (const recipient of recipients) {
             // Process each channel (EMAIL, SMS)
             for (const channelStr of channels) {
               const channel = channelStr as ChannelType
-
-              // Determine recipient based on channel
+              
               let recipientIdentifier: string | null = null
-              if (channel === 'EMAIL' && membership.user.email) {
-                recipientIdentifier = membership.user.email
-              } else if (channel === 'SMS' && membership.user.phone) {
-                recipientIdentifier = membership.user.phone
+              if (channel === 'EMAIL' && recipient.email) {
+                recipientIdentifier = recipient.email
+              } else if (channel === 'SMS' && recipient.phone) {
+                recipientIdentifier = recipient.phone
               }
-
+              
               if (!recipientIdentifier) {
                 skipped++
                 continue
               }
-
-              // Check suppression list
+              
+              // Check suppression
               if (await isSuppressed(recipientIdentifier, channel)) {
                 skipped++
                 continue
               }
-
+              
               // Generate idempotency key
               const idempotencyKey = generateIdempotencyKey(
                 event.id,
@@ -165,13 +191,13 @@ export async function scheduleUpcomingReminders(): Promise<{
                 channel,
                 recipientIdentifier
               )
-
+              
               try {
-                // Create or skip if already exists (idempotency)
                 await db.scheduledSend.upsert({
                   where: { idempotencyKey },
                   create: {
                     eventId: event.id,
+                    recipientUserId: recipient.userId, // NEW: Store recipient
                     targetDate: nextOccurrence,
                     offset,
                     channel,
@@ -180,8 +206,8 @@ export async function scheduleUpcomingReminders(): Promise<{
                     idempotencyKey,
                   },
                   update: {
-                    // If already exists and not sent, update due date in case rule changed
                     dueAtUtc: sendDate,
+                    recipientUserId: recipient.userId, // NEW: Update recipient
                   },
                 })
                 scheduled++
