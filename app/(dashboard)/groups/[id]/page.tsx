@@ -63,6 +63,7 @@ type GroupMember = {
 type GroupData = {
   id: string
   name: string
+  type: 'PERSONAL' | 'TEAM'
   ownerId: string
   owner: {
     id: string
@@ -315,6 +316,20 @@ export default function GroupDetailPage() {
                   ) : (
                     <>
                       <CardTitle className="text-3xl mb-2">{group.name}</CardTitle>
+                      <div className="flex items-center gap-2 mt-2 mb-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          group.type === 'PERSONAL' 
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300'
+                            : 'bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300'
+                        }`}>
+                          {group.type === 'PERSONAL' ? '👤 Personal' : '👥 Team'}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {group.type === 'PERSONAL' 
+                            ? 'You receive all reminders'
+                            : 'Everyone reminds each other'}
+                        </span>
+                      </div>
                       <CardDescription>
                         Created by {group.owner.name} on {new Date(group.createdAt).toLocaleDateString()}
                       </CardDescription>

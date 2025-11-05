@@ -24,6 +24,7 @@ const createGroupSchema = z.object({
     .min(2, 'Group name must be at least 2 characters')
     .max(50, 'Group name must be less than 50 characters')
     .trim(),
+  type: z.enum(['PERSONAL', 'TEAM']),
   defaultTimezone: z.string().optional(),
   maxEventsPerMember: z.number().int().positive().optional().nullable(),
 })
@@ -49,6 +50,7 @@ export default function NewGroupPage() {
     resolver: zodResolver(createGroupSchema),
     defaultValues: {
       name: '',
+      type: 'PERSONAL',
       defaultTimezone: 'UTC',
     },
   })
@@ -142,6 +144,46 @@ export default function NewGroupPage() {
                 <p className="text-xs text-muted-foreground">
                   Choose a name that helps you identify this celebration circle
                 </p>
+              </div>
+
+              {/* Group Type Selector */}
+              <div className="space-y-4">
+                <Label className="text-base font-semibold">Who should receive reminders?</Label>
+                
+                <div className="space-y-3">
+                  <label className="flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-accent/5 transition-colors">
+                    <input
+                      type="radio"
+                      value="PERSONAL"
+                      {...register('type')}
+                      defaultChecked
+                      className="mt-1"
+                      disabled={isCreating}
+                    />
+                    <div>
+                      <p className="font-medium text-foreground">👤 Personal</p>
+                      <p className="text-sm text-muted-foreground">
+                        Only you receive all reminders. Best for tracking birthdays and events for others.
+                      </p>
+                    </div>
+                  </label>
+                  
+                  <label className="flex items-start gap-3 p-4 border rounded-lg cursor-pointer hover:bg-accent/5 transition-colors">
+                    <input
+                      type="radio"
+                      value="TEAM"
+                      {...register('type')}
+                      className="mt-1"
+                      disabled={isCreating}
+                    />
+                    <div>
+                      <p className="font-medium text-foreground">👥 Team</p>
+                      <p className="text-sm text-muted-foreground">
+                        Everyone reminds each other (except the person being celebrated). Best for families, teams, and friend groups.
+                      </p>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               {/* Timezone */}

@@ -7,6 +7,7 @@ import { z } from 'zod'
 
 const createGroupSchema = z.object({
   name: z.string().min(2).max(50).trim(),
+  type: z.enum(['PERSONAL', 'TEAM']).default('PERSONAL'),
   defaultTimezone: z.string().optional(),
   maxEventsPerMember: z.number().int().positive().optional().nullable(),
 })
@@ -31,6 +32,7 @@ export async function createGroup(data: z.infer<typeof createGroupSchema>) {
       const newGroup = await tx.group.create({
         data: {
           name: validated.name,
+          type: validated.type || 'PERSONAL',
           ownerId: session.user.id,
           defaultTimezone: validated.defaultTimezone || 'UTC',
           maxEventsPerMember: validated.maxEventsPerMember || null,
@@ -223,6 +225,7 @@ export async function getGroupById(groupId: string) {
       group: {
         id: group.id,
         name: group.name,
+        type: group.type,
         ownerId: group.ownerId,
         owner: group.owner,
         defaultTimezone: group.defaultTimezone,
