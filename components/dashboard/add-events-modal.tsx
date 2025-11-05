@@ -45,6 +45,7 @@ interface EventFormData {
   day?: number
   hasYear: boolean
   year?: number
+  recurring: boolean // User can override for custom events
   notes?: string
 }
 
@@ -67,6 +68,7 @@ export function AddEventsModal({ isOpen, onClose, contact, groupId, onSuccess }:
       template,
       title: template.type === 'CUSTOM' && template.id !== 'custom' ? template.name : '',
       hasYear: template.requiresYear,
+      recurring: template.recurring, // Initialize from template, but can be changed for custom events
     }
     setEvents([...events, newEvent])
     setShowSelector(false)
@@ -219,7 +221,7 @@ export function AddEventsModal({ isOpen, onClose, contact, groupId, onSuccess }:
                             {event.template.name}
                           </h4>
                           <p className="text-sm text-neutral-600">
-                            {event.template.recurring ? 'Repeats yearly' : 'One-time event'}
+                            {event.recurring ? 'Repeats yearly' : 'One-time event'}
                           </p>
                         </div>
                       </div>
@@ -244,6 +246,38 @@ export function AddEventsModal({ isOpen, onClose, contact, groupId, onSuccess }:
                           placeholder="e.g., First Day of School"
                           className="mt-1"
                         />
+                      </div>
+                    )}
+
+                    {/* Recurring Toggle (for custom events only) */}
+                    {event.template.type === 'CUSTOM' && event.template.id === 'custom' && (
+                      <div className="flex items-center gap-3 p-3 bg-white/50 rounded-lg border">
+                        <div className="flex-1">
+                          <Label className="text-sm font-medium">Event Type</Label>
+                          <p className="text-xs text-neutral-600 mt-0.5">
+                            {event.recurring ? 'This event will repeat every year' : 'This is a one-time event'}
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={event.recurring ? 'default' : 'outline'}
+                            onClick={() => updateEvent(event.id, { recurring: true })}
+                            className="text-xs"
+                          >
+                            🔄 Recurring
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant={!event.recurring ? 'default' : 'outline'}
+                            onClick={() => updateEvent(event.id, { recurring: false, hasYear: true })}
+                            className="text-xs"
+                          >
+                            📅 One-time
+                          </Button>
+                        </div>
                       </div>
                     )}
 
