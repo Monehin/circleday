@@ -1,10 +1,15 @@
 'use client'
 
 /**
- * Add Events Modal Component
+ * Add Events Modal Component (v2 - Improved UX)
  * 
  * Allows group admins to quickly add multiple events for a member.
- * Supports birthday, anniversary, and custom events in one form.
+ * Features:
+ * - Starts with empty state (no assumptions)
+ * - Event type selection with templates
+ * - Smart month/day/year pickers
+ * - Progressive disclosure
+ * - Support for recurring and one-time events
  */
 
 import { useState, useEffect } from 'react'
@@ -12,12 +17,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { toast } from 'sonner'
-import { createBulkEvents, getContactEvents, type BulkEventInput } from '@/lib/actions/events-bulk'
-import { CalendarPlus, Trash2, Plus, Loader2 } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { createBulkEvents, getContactEvents } from '@/lib/actions/events-bulk'
+import { Trash2, Loader2, Plus } from 'lucide-react'
+import { MonthPicker } from '@/components/ui/month-picker'
+import { DayPicker } from '@/components/ui/day-picker'
+import { YearToggle } from '@/components/ui/year-toggle'
+import { EventTypeSelector, EVENT_TEMPLATES, type EventTemplate } from '@/components/ui/event-type-selector'
 
 interface AddEventsModalProps {
   isOpen: boolean
@@ -32,159 +38,121 @@ interface AddEventsModalProps {
 }
 
 interface EventFormData {
-  type: 'BIRTHDAY' | 'ANNIVERSARY' | 'CUSTOM'
+  id: string // Unique ID for React keys
+  template: EventTemplate
   title?: string
-  date: string
-  yearKnown: boolean
+  month?: number
+  day?: number
+  hasYear: boolean
+  year?: number
   notes?: string
 }
 
 export function AddEventsModal({ isOpen, onClose, contact, groupId, onSuccess }: AddEventsModalProps) {
   const [loading, setLoading] = useState(false)
-  const [loadingExisting, setLoadingExisting] = useState(false)
-  const [birthday, setBirthday] = useState<Partial<EventFormData>>({
-    type: 'BIRTHDAY',
-    yearKnown: true,
-  })
-  const [anniversary, setAnniversary] = useState<Partial<EventFormData>>({
-    type: 'ANNIVERSARY',
-    yearKnown: true,
-  })
-  const [customEvents, setCustomEvents] = useState<Partial<EventFormData>[]>([])
+  const [showSelector, setShowSelector] = useState(true)
+  const [events, setEvents] = useState<EventFormData[]>([])
 
-  // Load existing events when modal opens
+  // Reset state when modal closes
   useEffect(() => {
-    if (isOpen && contact.id && groupId) {
-      loadExistingEvents()
+    if (!isOpen) {
+      setEvents([])
+      setShowSelector(true)
     }
-  }, [isOpen, contact.id, groupId])
+  }, [isOpen])
 
-  const loadExistingEvents = async () => {
-    setLoadingExisting(true)
-    try {
-      const result = await getContactEvents(contact.id, groupId)
-      if (result.success && result.data) {
-        // Pre-populate existing events
-        result.data.forEach((event) => {
-          const dateStr = format(event.date, "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-          
-          if (event.type === 'BIRTHDAY') {
-            setBirthday({
-              type: 'BIRTHDAY',
-              date: dateStr,
-              yearKnown: event.yearKnown,
-              notes: event.notes || '',
-            })
-          } else if (event.type === 'ANNIVERSARY') {
-            setAnniversary({
-              type: 'ANNIVERSARY',
-              date: dateStr,
-              yearKnown: event.yearKnown,
-              notes: event.notes || '',
-            })
-          } else if (event.type === 'CUSTOM') {
-            setCustomEvents((prev) => [
-              ...prev,
-              {
-                type: 'CUSTOM',
-                title: event.title || '',
-                date: dateStr,
-                yearKnown: event.yearKnown,
-                notes: event.notes || '',
-              },
-            ])
-          }
-        })
-      }
-    } catch (error) {
-      console.error('Failed to load existing events:', error)
-    } finally {
-      setLoadingExisting(false)
+  const addEvent = (template: EventTemplate) => {
+    const newEvent: EventFormData = {
+      id: `${Date.now()}-${Math.random()}`,
+      template,
+      title: template.type === 'CUSTOM' && template.id !== 'custom' ? template.name : '',
+      hasYear: template.requiresYear,
+    }
+    setEvents([...events, newEvent])
+    setShowSelector(false)
+  }
+
+  const removeEvent = (id: string) => {
+    setEvents(events.filter(e => e.id !== id))
+    if (events.length === 1) {
+      setShowSelector(true)
     }
   }
 
-  const addCustomEvent = () => {
-    setCustomEvents([
-      ...customEvents,
-      {
-        type: 'CUSTOM',
-        yearKnown: true,
-      },
-    ])
+  const updateEvent = (id: string, updates: Partial<EventFormData>) => {
+    setEvents(events.map(e => e.id === id ? { ...e, ...updates } : e))
   }
 
-  const removeCustomEvent = (index: number) => {
-    setCustomEvents(customEvents.filter((_, i) => i !== index))
+  const getColorClasses = (color: string) => {
+    const colors: Record<string, { bg: string; border: string }> = {
+      violet: { bg: 'bg-violet-50', border: 'border-violet-200' },
+      pink: { bg: 'bg-pink-50', border: 'border-pink-200' },
+      blue: { bg: 'bg-blue-50', border: 'border-blue-200' },
+      green: { bg: 'bg-green-50', border: 'border-green-200' },
+      orange: { bg: 'bg-orange-50', border: 'border-orange-200' },
+      neutral: { bg: 'bg-neutral-50', border: 'border-neutral-200' },
+    }
+    return colors[color] || colors.neutral
   }
 
-  const updateCustomEvent = (index: number, updates: Partial<EventFormData>) => {
-    setCustomEvents(
-      customEvents.map((event, i) => (i === index ? { ...event, ...updates } : event))
-    )
+  const validateEvent = (event: EventFormData): boolean => {
+    // Must have month and day
+    if (!event.month || !event.day) return false
+    
+    // If custom event without predefined title, must have custom title
+    if (event.template.type === 'CUSTOM' && event.template.id === 'custom' && !event.title) return false
+    
+    // If requires year, must have year
+    if (event.template.requiresYear && !event.year) return false
+    
+    return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate all events
+    const invalidEvents = events.filter(e => !validateEvent(e))
+    if (invalidEvents.length > 0) {
+      toast.error('Please fill in all required fields for each event')
+      return
+    }
+
+    if (events.length === 0) {
+      toast.error('Please add at least one event')
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Collect all events to create
-      const events: BulkEventInput['events'] = []
-
-      // Add birthday if date is provided
-      if (birthday.date) {
-        events.push({
-          type: 'BIRTHDAY',
-          date: birthday.date,
-          yearKnown: birthday.yearKnown ?? true,
-          notes: birthday.notes,
-        })
-      }
-
-      // Add anniversary if date is provided
-      if (anniversary.date) {
-        events.push({
-          type: 'ANNIVERSARY',
-          date: anniversary.date,
-          yearKnown: anniversary.yearKnown ?? true,
-          notes: anniversary.notes,
-        })
-      }
-
-      // Add custom events with valid data
-      customEvents.forEach((event) => {
-        if (event.date && event.title) {
-          events.push({
-            type: 'CUSTOM',
-            title: event.title,
-            date: event.date,
-            yearKnown: event.yearKnown ?? true,
-            notes: event.notes,
-          })
+      // Convert to API format
+      const eventsToCreate = events.map(event => {
+        // Create date: always use month/day, optionally year
+        const year = event.hasYear && event.year ? event.year : 2000 // Use 2000 as placeholder for recurring
+        const date = new Date(year, event.month! - 1, event.day!)
+        
+        return {
+          type: event.template.type,
+          title: event.template.type === 'CUSTOM' ? (event.title || event.template.name) : undefined,
+          date: date.toISOString(),
+          yearKnown: event.hasYear && !!event.year,
+          notes: event.notes,
         }
       })
 
-      if (events.length === 0) {
-        toast.error('Please add at least one event')
-        return
-      }
-
-      // Submit bulk events
       const result = await createBulkEvents({
         contactId: contact.id,
         groupId,
-        events,
+        events: eventsToCreate,
       })
 
       if (result.success) {
         toast.success(`Successfully added ${events.length} event(s) for ${contact.name}!`)
         onSuccess?.()
         onClose()
-        
-        // Reset form
-        setBirthday({ type: 'BIRTHDAY', yearKnown: true })
-        setAnniversary({ type: 'ANNIVERSARY', yearKnown: true })
-        setCustomEvents([])
+        setEvents([])
+        setShowSelector(true)
       } else {
         toast.error(result.error || 'Failed to create events')
       }
@@ -198,239 +166,168 @@ export function AddEventsModal({ isOpen, onClose, contact, groupId, onSuccess }:
 
   return (
     <Dialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <CalendarPlus className="h-5 w-5 text-violet-600" />
+          <DialogTitle className="text-2xl">
             Add Events for {contact.name}
           </DialogTitle>
+          <p className="text-sm text-neutral-600 mt-1">
+            Choose event types and add details
+          </p>
         </DialogHeader>
 
-        {loadingExisting ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Birthday Section */}
-            <div className="space-y-3 p-4 bg-violet-50 rounded-lg border border-violet-200">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🎂</span>
-                <Label className="text-lg font-semibold">Birthday</Label>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="birthday-date">Date</Label>
-                  <Input
-                    id="birthday-date"
-                    type="date"
-                    value={birthday.date ? format(parseISO(birthday.date), 'yyyy-MM-dd') : ''}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        const date = new Date(e.target.value)
-                        setBirthday({ ...birthday, date: date.toISOString() })
-                      } else {
-                        setBirthday({ ...birthday, date: '' })
-                      }
-                    }}
-                  />
-                </div>
-                
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={birthday.yearKnown ?? true}
-                      onChange={(e) =>
-                        setBirthday({ ...birthday, yearKnown: e.target.checked })
-                      }
-                      className="h-4 w-4 text-violet-600 rounded"
-                    />
-                    <span className="text-sm">Year known</span>
-                  </label>
-                </div>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-6 mt-4">
+          {/* Event Type Selector (shown when no events or user wants to add more) */}
+          {showSelector && events.length === 0 && (
+            <EventTypeSelector onSelect={addEvent} />
+          )}
 
-              <div>
-                <Label htmlFor="birthday-notes">Notes (optional)</Label>
-                <Input
-                  id="birthday-notes"
-                  placeholder="e.g., Favorite cake flavor"
-                  value={birthday.notes || ''}
-                  onChange={(e) => setBirthday({ ...birthday, notes: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Anniversary Section */}
-            <div className="space-y-3 p-4 bg-pink-50 rounded-lg border border-pink-200">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">💍</span>
-                <Label className="text-lg font-semibold">Anniversary</Label>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="anniversary-date">Date</Label>
-                  <Input
-                    id="anniversary-date"
-                    type="date"
-                    value={anniversary.date ? format(parseISO(anniversary.date), 'yyyy-MM-dd') : ''}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        const date = new Date(e.target.value)
-                        setAnniversary({ ...anniversary, date: date.toISOString() })
-                      } else {
-                        setAnniversary({ ...anniversary, date: '' })
-                      }
-                    }}
-                  />
-                </div>
-                
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={anniversary.yearKnown ?? true}
-                      onChange={(e) =>
-                        setAnniversary({ ...anniversary, yearKnown: e.target.checked })
-                      }
-                      className="h-4 w-4 text-pink-600 rounded"
-                    />
-                    <span className="text-sm">Year known</span>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="anniversary-notes">Notes (optional)</Label>
-                <Input
-                  id="anniversary-notes"
-                  placeholder="e.g., Wedding anniversary"
-                  value={anniversary.notes || ''}
-                  onChange={(e) => setAnniversary({ ...anniversary, notes: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Custom Events Section */}
-            <div className="space-y-3">
+          {/* Added Events */}
+          {events.length > 0 && (
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label className="text-lg font-semibold flex items-center gap-2">
-                  <span className="text-2xl">✨</span>
-                  Custom Events
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addCustomEvent}
-                  className="flex items-center gap-1"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Custom Event
-                </Button>
-              </div>
-
-              {customEvents.map((event, index) => (
-                <div
-                  key={index}
-                  className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200 relative"
-                >
+                <h3 className="text-lg font-semibold">
+                  Added Events ({events.length})
+                </h3>
+                {!showSelector && (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => removeCustomEvent(index)}
-                    className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                    onClick={() => setShowSelector(true)}
+                    className="flex items-center gap-2"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
+                    Add Another
                   </Button>
+                )}
+              </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label>Event Name</Label>
-                      <Input
-                        placeholder="e.g., Graduation"
-                        value={event.title || ''}
-                        onChange={(e) =>
-                          updateCustomEvent(index, { title: e.target.value })
-                        }
-                      />
+              {events.map((event) => {
+                const colors = getColorClasses(event.template.color) || { bg: 'bg-neutral-50', border: 'border-neutral-200' }
+                return (
+                  <div
+                    key={event.id}
+                    className={`p-5 rounded-xl border-2 ${colors.bg} ${colors.border} relative space-y-4`}
+                  >
+                    {/* Header */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="text-3xl">{event.template.icon}</span>
+                        <div>
+                          <h4 className="font-semibold text-lg">
+                            {event.template.name}
+                          </h4>
+                          <p className="text-sm text-neutral-600">
+                            {event.template.recurring ? 'Repeats yearly' : 'One-time event'}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeEvent(event.id)}
+                        className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
 
-                    <div>
-                      <Label>Date</Label>
-                      <Input
-                        type="date"
-                        value={event.date ? format(parseISO(event.date), 'yyyy-MM-dd') : ''}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const date = new Date(e.target.value)
-                            updateCustomEvent(index, { date: date.toISOString() })
-                          } else {
-                            updateCustomEvent(index, { date: '' })
-                          }
-                        }}
-                      />
+                    {/* Custom Event Title */}
+                    {event.template.type === 'CUSTOM' && event.template.id === 'custom' && (
+                      <div>
+                        <Label>Event Name *</Label>
+                        <Input
+                          value={event.title || ''}
+                          onChange={(e) => updateEvent(event.id, { title: e.target.value })}
+                          placeholder="e.g., First Day of School"
+                          className="mt-1"
+                        />
+                      </div>
+                    )}
+
+                    {/* Date Pickers */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Month *</Label>
+                        <MonthPicker
+                          value={event.month}
+                          onChange={(month) => updateEvent(event.id, { month })}
+                        />
+                      </div>
+                      <div>
+                        <Label>Day *</Label>
+                        <DayPicker
+                          value={event.day}
+                          month={event.month}
+                          year={event.year}
+                          onChange={(day) => updateEvent(event.id, { day })}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={event.yearKnown ?? true}
-                        onChange={(e) =>
-                          updateCustomEvent(index, { yearKnown: e.target.checked })
-                        }
-                        className="h-4 w-4 text-blue-600 rounded"
-                      />
-                      <span className="text-sm">Year known</span>
-                    </label>
-                  </div>
-
-                  <div>
-                    <Label>Notes (optional)</Label>
-                    <Input
-                      placeholder="Add any special notes..."
-                      value={event.notes || ''}
-                      onChange={(e) =>
-                        updateCustomEvent(index, { notes: e.target.value })
-                      }
+                    {/* Year Toggle */}
+                    <YearToggle
+                      hasYear={event.hasYear}
+                      year={event.year}
+                      onToggleChange={(hasYear) => updateEvent(event.id, { hasYear })}
+                      onYearChange={(year) => updateEvent(event.id, { year })}
+                      label={event.template.requiresYear ? 'Year (required)' : 'I know the year (optional)'}
                     />
-                  </div>
-                </div>
-              ))}
 
-              {customEvents.length === 0 && (
-                <p className="text-sm text-neutral-500 italic">
-                  No custom events yet. Click "Add Custom Event" to add one.
-                </p>
+                    {/* Notes */}
+                    <div>
+                      <Label>Notes (optional)</Label>
+                      <Input
+                        value={event.notes || ''}
+                        onChange={(e) => updateEvent(event.id, { notes: e.target.value })}
+                        placeholder="Add any special notes..."
+                        className="mt-1"
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Add More Button (when selector is hidden) */}
+              {showSelector && events.length > 0 && (
+                <EventTypeSelector onSelect={addEvent} />
               )}
             </div>
+          )}
 
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+          {/* Actions */}
+          <div className="flex justify-between items-center pt-4 border-t">
+            <p className="text-sm text-neutral-600">
+              {events.length === 0 ? 'No events added yet' : `${events.length} event(s) ready to save`}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={loading}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={loading}>
+              <Button
+                type="submit"
+                disabled={loading || events.length === 0}
+              >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Saving...
                   </>
                 ) : (
-                  'Save All Events'
+                  <>Save {events.length > 0 ? `(${events.length})` : ''} Events</>
                 )}
               </Button>
             </div>
-          </form>
-        )}
+          </div>
+        </form>
       </DialogContent>
     </Dialog>
   )
 }
-

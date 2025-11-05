@@ -1,10 +1,10 @@
 'use client'
 
 /**
- * Public Event Form Component
+ * Public Event Form Component (v2 - Improved UX)
  * 
  * Form for members to add their own events via invite link.
- * No authentication required.
+ * No authentication required - uses same new UX patterns as AddEventsModal.
  */
 
 import { useState } from 'react'
@@ -16,7 +16,10 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, Plus, Trash2, Check } from 'lucide-react'
 import { submitEventsViaToken } from '@/lib/actions/event-invite-tokens'
-import { format, parseISO } from 'date-fns'
+import { MonthPicker } from '@/components/ui/month-picker'
+import { DayPicker } from '@/components/ui/day-picker'
+import { YearToggle } from '@/components/ui/year-toggle'
+import { EventTypeSelector, EVENT_TEMPLATES, type EventTemplate } from '@/components/ui/event-type-selector'
 
 interface PublicEventFormProps {
   token: string
@@ -31,10 +34,13 @@ interface PublicEventFormProps {
 }
 
 interface EventFormData {
-  type: 'BIRTHDAY' | 'ANNIVERSARY' | 'CUSTOM'
+  id: string
+  template: EventTemplate
   title?: string
-  date: string
-  yearKnown: boolean
+  month?: number
+  day?: number
+  hasYear: boolean
+  year?: number
   notes?: string
 }
 
@@ -47,112 +53,83 @@ export function PublicEventForm({ token, contactName, groupId, existingEvents }:
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [showSelector, setShowSelector] = useState(true)
+  const [events, setEvents] = useState<EventFormData[]>([])
 
-  // Initialize form with existing events if they exist
-  const existingBirthday = existingEvents.find(e => e.type === 'BIRTHDAY')
-  const existingAnniversary = existingEvents.find(e => e.type === 'ANNIVERSARY')
-  const existingCustom = existingEvents.filter(e => e.type === 'CUSTOM')
-
-  const [birthday, setBirthday] = useState<Partial<EventFormData>>({
-    type: 'BIRTHDAY',
-    date: existingBirthday ? existingBirthday.date.toISOString() : '',
-    yearKnown: existingBirthday?.yearKnown ?? true,
-  })
-
-  const [anniversary, setAnniversary] = useState<Partial<EventFormData>>({
-    type: 'ANNIVERSARY',
-    date: existingAnniversary ? existingAnniversary.date.toISOString() : '',
-    yearKnown: existingAnniversary?.yearKnown ?? true,
-  })
-
-  const [customEvents, setCustomEvents] = useState<Partial<EventFormData>[]>(
-    existingCustom.map(e => ({
-      type: 'CUSTOM' as const,
-      title: e.title || '',
-      date: e.date.toISOString(),
-      yearKnown: e.yearKnown,
-    }))
-  )
-
-  const [keepAgePrivate, setKeepAgePrivate] = useState(false)
-
-  const addCustomEvent = () => {
-    setCustomEvents([
-      ...customEvents,
-      {
-        type: 'CUSTOM',
-        yearKnown: true,
-      },
-    ])
+  const addEvent = (template: EventTemplate) => {
+    const newEvent: EventFormData = {
+      id: `${Date.now()}-${Math.random()}`,
+      template,
+      title: template.type === 'CUSTOM' && template.id !== 'custom' ? template.name : '',
+      hasYear: template.requiresYear,
+    }
+    setEvents([...events, newEvent])
+    setShowSelector(false)
   }
 
-  const removeCustomEvent = (index: number) => {
-    setCustomEvents(customEvents.filter((_, i) => i !== index))
+  const removeEvent = (id: string) => {
+    setEvents(events.filter(e => e.id !== id))
+    if (events.length === 1) {
+      setShowSelector(true)
+    }
   }
 
-  const updateCustomEvent = (index: number, updates: Partial<EventFormData>) => {
-    setCustomEvents(
-      customEvents.map((event, i) => (i === index ? { ...event, ...updates } : event))
-    )
+  const updateEvent = (id: string, updates: Partial<EventFormData>) => {
+    setEvents(events.map(e => e.id === id ? { ...e, ...updates } : e))
+  }
+
+  const getColorClasses = (color: string) => {
+    const colors: Record<string, { bg: string; border: string }> = {
+      violet: { bg: 'bg-violet-50', border: 'border-violet-200' },
+      pink: { bg: 'bg-pink-50', border: 'border-pink-200' },
+      blue: { bg: 'bg-blue-50', border: 'border-blue-200' },
+      green: { bg: 'bg-green-50', border: 'border-green-200' },
+      orange: { bg: 'bg-orange-50', border: 'border-orange-200' },
+      neutral: { bg: 'bg-neutral-50', border: 'border-neutral-200' },
+    }
+    return colors[color] || colors.neutral
+  }
+
+  const validateEvent = (event: EventFormData): boolean => {
+    if (!event.month || !event.day) return false
+    if (event.template.type === 'CUSTOM' && event.template.id === 'custom' && !event.title) return false
+    if (event.template.requiresYear && !event.year) return false
+    return true
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    const invalidEvents = events.filter(e => !validateEvent(e))
+    if (invalidEvents.length > 0) {
+      alert('Please fill in all required fields for each event')
+      return
+    }
+
+    if (events.length === 0) {
+      alert('Please add at least one event')
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Collect all events
-      const events: Array<{
-        type: 'BIRTHDAY' | 'ANNIVERSARY' | 'CUSTOM'
-        title?: string
-        date: string
-        yearKnown: boolean
-        notes?: string
-      }> = []
-
-      // Add birthday if provided
-      if (birthday.date) {
-        events.push({
-          type: 'BIRTHDAY',
-          date: birthday.date,
-          yearKnown: keepAgePrivate ? false : (birthday.yearKnown ?? true),
-          notes: birthday.notes,
-        })
-      }
-
-      // Add anniversary if provided
-      if (anniversary.date) {
-        events.push({
-          type: 'ANNIVERSARY',
-          date: anniversary.date,
-          yearKnown: anniversary.yearKnown ?? true,
-          notes: anniversary.notes,
-        })
-      }
-
-      // Add custom events with valid data
-      customEvents.forEach((event) => {
-        if (event.date && event.title) {
-          events.push({
-            type: 'CUSTOM',
-            title: event.title,
-            date: event.date,
-            yearKnown: event.yearKnown ?? true,
-            notes: event.notes,
-          })
+      const eventsToSubmit = events.map(event => {
+        const year = event.hasYear && event.year ? event.year : 2000
+        const date = new Date(year, event.month! - 1, event.day!)
+        
+        return {
+          type: event.template.type,
+          title: event.template.type === 'CUSTOM' ? (event.title || event.template.name) : undefined,
+          date: date.toISOString(),
+          yearKnown: event.hasYear && !!event.year,
+          notes: event.notes,
         }
       })
 
-      if (events.length === 0) {
-        alert('Please add at least one event')
-        setLoading(false)
-        return
-      }
-
-      // Submit via token
       const result = await submitEventsViaToken({
         token,
-        events,
+        events: eventsToSubmit,
       })
 
       if (result.success) {
@@ -222,214 +199,161 @@ export function PublicEventForm({ token, contactName, groupId, existingEvents }:
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Birthday Section */}
-            <div className="space-y-4 p-6 bg-violet-50 rounded-xl border-2 border-violet-200">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">🎂</span>
-                <div>
-                  <h3 className="text-xl font-semibold text-violet-900">Birthday</h3>
-                  <p className="text-sm text-violet-700">When do you celebrate your birthday?</p>
-                </div>
-              </div>
+            {/* Event Type Selector */}
+            {showSelector && events.length === 0 && (
+              <EventTypeSelector onSelect={addEvent} />
+            )}
 
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="birthday-date" className="text-base">Date</Label>
-                  <Input
-                    id="birthday-date"
-                    type="date"
-                    value={birthday.date ? format(parseISO(birthday.date), 'yyyy-MM-dd') : ''}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        const date = new Date(e.target.value)
-                        setBirthday({ ...birthday, date: date.toISOString() })
-                      } else {
-                        setBirthday({ ...birthday, date: '' })
-                      }
-                    }}
-                    className="h-12 text-base"
-                  />
+            {/* Added Events */}
+            {events.length > 0 && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">
+                    Your Events ({events.length})
+                  </h3>
+                  {!showSelector && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowSelector(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add Another
+                    </Button>
+                  )}
                 </div>
 
-                {birthday.date && (
-                  <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg hover:bg-violet-100 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={keepAgePrivate}
-                      onChange={(e) => setKeepAgePrivate(e.target.checked)}
-                      className="h-5 w-5 text-violet-600 rounded"
-                    />
-                    <span className="text-sm text-violet-900">
-                      Keep my age private (only show month and day)
-                    </span>
-                  </label>
+                {events.map((event) => {
+                  const colors = getColorClasses(event.template.color) || { bg: 'bg-neutral-50', border: 'border-neutral-200' }
+                  return (
+                    <div
+                      key={event.id}
+                      className={`p-5 rounded-xl border-2 ${colors.bg} ${colors.border} relative space-y-4`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl">{event.template.icon}</span>
+                          <div>
+                            <h4 className="font-semibold text-lg">
+                              {event.template.name}
+                            </h4>
+                            <p className="text-sm text-neutral-600">
+                              {event.template.recurring ? 'Repeats every year' : 'One-time event'}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeEvent(event.id)}
+                          className="h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      {/* Custom Event Title */}
+                      {event.template.type === 'CUSTOM' && event.template.id === 'custom' && (
+                        <div>
+                          <Label>Event Name *</Label>
+                          <Input
+                            value={event.title || ''}
+                            onChange={(e) => updateEvent(event.id, { title: e.target.value })}
+                            placeholder="e.g., First Day of School"
+                            className="mt-1"
+                          />
+                        </div>
+                      )}
+
+                      {/* Date Pickers */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label>Month *</Label>
+                          <MonthPicker
+                            value={event.month}
+                            onChange={(month) => updateEvent(event.id, { month })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Day *</Label>
+                          <DayPicker
+                            value={event.day}
+                            month={event.month}
+                            year={event.year}
+                            onChange={(day) => updateEvent(event.id, { day })}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Year Toggle - Special handling for birthdays */}
+                      {event.template.type === 'BIRTHDAY' ? (
+                        <YearToggle
+                          hasYear={event.hasYear}
+                          year={event.year}
+                          onToggleChange={(hasYear) => updateEvent(event.id, { hasYear })}
+                          onYearChange={(year) => updateEvent(event.id, { year })}
+                          label="Include birth year (you can keep your age private by leaving this unchecked)"
+                        />
+                      ) : (
+                        <YearToggle
+                          hasYear={event.hasYear}
+                          year={event.year}
+                          onToggleChange={(hasYear) => updateEvent(event.id, { hasYear })}
+                          onYearChange={(year) => updateEvent(event.id, { year })}
+                          label={event.template.requiresYear ? 'Year (required)' : 'I know the year (optional)'}
+                        />
+                      )}
+
+                      {/* Notes */}
+                      <div>
+                        <Label>Notes (optional)</Label>
+                        <Input
+                          value={event.notes || ''}
+                          onChange={(e) => updateEvent(event.id, { notes: e.target.value })}
+                          placeholder="Add any special notes..."
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {/* Add More Button (when selector is hidden) */}
+                {showSelector && events.length > 0 && (
+                  <EventTypeSelector onSelect={addEvent} />
                 )}
-
-                <div>
-                  <Label htmlFor="birthday-notes" className="text-base">Notes (optional)</Label>
-                  <Input
-                    id="birthday-notes"
-                    placeholder="e.g., Favorite cake flavor, gift ideas"
-                    value={birthday.notes || ''}
-                    onChange={(e) => setBirthday({ ...birthday, notes: e.target.value })}
-                    className="h-11"
-                  />
-                </div>
               </div>
-            </div>
-
-            {/* Anniversary Section */}
-            <div className="space-y-4 p-6 bg-pink-50 rounded-xl border-2 border-pink-200">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">💍</span>
-                <div>
-                  <h3 className="text-xl font-semibold text-pink-900">Anniversary</h3>
-                  <p className="text-sm text-pink-700">When is your anniversary?</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="anniversary-date" className="text-base">Date</Label>
-                  <Input
-                    id="anniversary-date"
-                    type="date"
-                    value={anniversary.date ? format(parseISO(anniversary.date), 'yyyy-MM-dd') : ''}
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        const date = new Date(e.target.value)
-                        setAnniversary({ ...anniversary, date: date.toISOString() })
-                      } else {
-                        setAnniversary({ ...anniversary, date: '' })
-                      }
-                    }}
-                    className="h-12 text-base"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="anniversary-notes" className="text-base">Notes (optional)</Label>
-                  <Input
-                    id="anniversary-notes"
-                    placeholder="e.g., Wedding anniversary, first date"
-                    value={anniversary.notes || ''}
-                    onChange={(e) => setAnniversary({ ...anniversary, notes: e.target.value })}
-                    className="h-11"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Custom Events Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">✨</span>
-                  <div>
-                    <h3 className="text-xl font-semibold text-neutral-900">Other Special Days</h3>
-                    <p className="text-sm text-neutral-600">Graduation, work anniversary, etc.</p>
-                  </div>
-                </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addCustomEvent}
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Event
-                </Button>
-              </div>
-
-              {customEvents.map((event, index) => (
-                <div
-                  key={index}
-                  className="space-y-3 p-6 bg-blue-50 rounded-xl border-2 border-blue-200 relative"
-                >
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeCustomEvent(index)}
-                    className="absolute top-3 right-3 h-8 w-8 p-0 hover:bg-red-100 hover:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-base">Event Name</Label>
-                      <Input
-                        placeholder="e.g., Graduation Day"
-                        value={event.title || ''}
-                        onChange={(e) =>
-                          updateCustomEvent(index, { title: e.target.value })
-                        }
-                        className="h-11"
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="text-base">Date</Label>
-                      <Input
-                        type="date"
-                        value={event.date ? format(parseISO(event.date), 'yyyy-MM-dd') : ''}
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            const date = new Date(e.target.value)
-                            updateCustomEvent(index, { date: date.toISOString() })
-                          } else {
-                            updateCustomEvent(index, { date: '' })
-                          }
-                        }}
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label className="text-base">Notes (optional)</Label>
-                    <Input
-                      placeholder="Add any special notes..."
-                      value={event.notes || ''}
-                      onChange={(e) =>
-                        updateCustomEvent(index, { notes: e.target.value })
-                      }
-                      className="h-11"
-                    />
-                  </div>
-                </div>
-              ))}
-
-              {customEvents.length === 0 && (
-                <div className="text-center py-8 text-neutral-500 text-sm italic">
-                  No custom events yet. Click "Add Event" to add one.
-                </div>
-              )}
-            </div>
+            )}
 
             {/* Submit Button */}
-            <div className="pt-6 border-t">
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full h-14 text-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
-              >
-                {loading ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Saving Your Events...
-                  </>
-                ) : (
-                  <>Submit My Events 🎉</>
-                )}
-              </Button>
-            </div>
+            {events.length > 0 && (
+              <div className="pt-6 border-t">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full h-14 text-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Saving Your Events...
+                    </>
+                  ) : (
+                    <>Submit {events.length} Event{events.length > 1 ? 's' : ''} 🎉</>
+                  )}
+                </Button>
+                <p className="text-xs text-neutral-500 text-center mt-3">
+                  By submitting, you agree to share these dates with your group.
+                </p>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>
     </motion.div>
   )
 }
-
