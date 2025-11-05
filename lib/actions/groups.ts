@@ -523,3 +523,69 @@ export async function toggleGroupReminders(groupId: string, enabled: boolean) {
   }
 }
 
+/**
+ * Delete a group (soft delete)
+ * Only the owner can delete a group
+ */
+export async function deleteGroup(groupId: string) {
+  try {
+    // Get session
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    })
+
+    if (!session?.user) {
+      return { error: 'Unauthorized' }
+    }
+
+    // Check if user is the owner
+    const group = await db.group.findFirst({
+      where: {
+        id: groupId,
+        ownerId: session.user.id,
+        deletedAt: null,
+      },
+      include: {
+        _count: {
+          select: {
+            memberships: true,
+            reminderRules: true,
+          },
+        },
+      },
+    })
+
+    if (!group) {
+      return { error: 'Group not found or you do not have permission' }
+    }
+
+    // Soft delete the group (this will cascade due to Prisma schema relations)
+    await db.group.update({
+      where: { id: groupId },
+      data: { deletedAt: new Date() },
+    })
+
+    // Create audit log for the deletion
+    await db.auditLog.create({
+      data: {
+        actorId: session.user.id,
+        groupId,
+        method: 'DELETE',
+        entity: 'Group',
+        entityId: groupId,
+        diffJson: {
+          action: 'delete_group',
+          groupName: group.name,
+          memberCount: group._count.memberships,
+          reminderRuleCount: group._count.reminderRules,
+        },
+      },
+    })
+
+    return { success: true }
+  } catch (error) {
+    console.error('Failed to delete group:', error)
+    return { error: 'Failed to delete group' }
+  }
+}
+

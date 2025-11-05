@@ -19,9 +19,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { PageLoader, Loader } from '@/components/ui/loader'
-import { getGroupById, updateGroup, toggleGroupReminders } from '@/lib/actions/groups'
+import { getGroupById, updateGroup, toggleGroupReminders, deleteGroup } from '@/lib/actions/groups'
 import Link from 'next/link'
-import { CalendarPlus, Link2 } from 'lucide-react'
+import { CalendarPlus, Link2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 const updateGroupSchema = z.object({
@@ -91,6 +91,8 @@ export default function GroupDetailPage() {
   const [addEventsContact, setAddEventsContact] = useState<{ id: string; name: string; email?: string | null } | null>(null)
   const [shareEventLinkContact, setShareEventLinkContact] = useState<{ id: string; name: string; email?: string | null; phone?: string | null } | null>(null)
   const [isTogglingReminders, setIsTogglingReminders] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const {
     register,
@@ -143,6 +145,25 @@ export default function GroupDetailPage() {
       toast.error('Failed to toggle reminders')
     } finally {
       setIsTogglingReminders(false)
+    }
+  }
+
+  const handleDeleteGroup = async () => {
+    setIsDeleting(true)
+    try {
+      const result = await deleteGroup(groupId)
+      if (result.success) {
+        toast.success('Group deleted successfully')
+        router.push('/groups')
+      } else {
+        toast.error(result.error || 'Failed to delete group')
+        setShowDeleteConfirm(false)
+      }
+    } catch (error) {
+      toast.error('Failed to delete group')
+      setShowDeleteConfirm(false)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -543,6 +564,45 @@ export default function GroupDetailPage() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Danger Zone */}
+        {canEdit && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeIn}
+            transition={{ delay: 0.4 }}
+            className="mt-8"
+          >
+            <Card className="border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/20">
+              <CardHeader>
+                <CardTitle className="text-xl text-red-600 dark:text-red-400">Danger Zone</CardTitle>
+                <CardDescription className="text-red-600/80 dark:text-red-400/80">
+                  Irreversible and destructive actions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between p-4 rounded-lg border border-red-200 dark:border-red-900/50 bg-white dark:bg-background">
+                  <div>
+                    <p className="font-medium text-foreground mb-1">Delete This Group</p>
+                    <p className="text-sm text-muted-foreground">
+                      Permanently delete this group, all members, events, and reminder rules. This action cannot be undone.
+                    </p>
+                  </div>
+                  <Button
+                    variant="destructive"
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={isDeleting}
+                    className="ml-4"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Group
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
       </main>
 
       {/* Modals */}
@@ -576,6 +636,66 @@ export default function GroupDetailPage() {
           contact={shareEventLinkContact}
           groupId={groupId}
         />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-background border border-border rounded-lg shadow-2xl max-w-md w-full p-6"
+          >
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-950/50 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-foreground mb-2">Delete Group</h3>
+                <p className="text-sm text-muted-foreground">
+                  Are you sure you want to delete <span className="font-semibold text-foreground">{group?.name}</span>? 
+                  This will permanently delete:
+                </p>
+                <ul className="mt-3 space-y-1 text-sm text-muted-foreground list-disc list-inside">
+                  <li>All {group?.memberCount || 0} member{group?.memberCount !== 1 ? 's' : ''}</li>
+                  <li>All events and celebrations</li>
+                  <li>All reminder rules and history</li>
+                  <li>All invite links and tokens</li>
+                </ul>
+                <p className="mt-3 text-sm font-medium text-red-600 dark:text-red-400">
+                  This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={isDeleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteGroup}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader className="mr-2" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Permanently
+                  </>
+                )}
+              </Button>
+            </div>
+          </motion.div>
+        </div>
       )}
     </div>
   )

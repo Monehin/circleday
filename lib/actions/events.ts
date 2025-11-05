@@ -420,3 +420,55 @@ export async function getContactsForEvents(groupId?: string) {
   }
 }
 
+/**
+ * Get all events for a specific contact
+ */
+export async function getContactEvents(contactId: string) {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() })
+    if (!session?.user) {
+      return { error: 'Unauthorized' }
+    }
+
+    // Check if user has access to this contact through any group membership
+    const contact = await db.contact.findFirst({
+      where: {
+        id: contactId,
+        deletedAt: null,
+        memberships: {
+          some: {
+            group: {
+              memberships: {
+                some: {
+                  userId: session.user.id,
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!contact) {
+      return { error: 'Contact not found or access denied' }
+    }
+
+    // Fetch all events for this contact
+    const events = await db.event.findMany({
+      where: {
+        contactId,
+        deletedAt: null,
+      },
+      orderBy: [
+        { type: 'asc' }, // Group by type (BIRTHDAY, ANNIVERSARY, CUSTOM)
+        { date: 'asc' }, // Then by date
+      ],
+    })
+
+    return { success: true, events }
+  } catch (error) {
+    console.error('Failed to fetch contact events:', error)
+    return { error: 'Failed to fetch contact events' }
+  }
+}
+

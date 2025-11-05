@@ -209,6 +209,8 @@ export async function getPendingScheduledSendsForToday() {
   const today = startOfDay(new Date())
   const endOfDay = addDays(today, 1)
 
+  // Get all pending scheduled sends for today
+  // Note: We filter by remindersEnabled in the scheduler when creating these
   return await db.scheduledSend.findMany({
     where: {
       dueAtUtc: {
@@ -217,12 +219,6 @@ export async function getPendingScheduledSendsForToday() {
       },
       status: {
         in: ['PENDING', 'QUEUED'],
-      },
-      reminderRule: {
-        group: {
-          remindersEnabled: true,
-          deletedAt: null,
-        },
       },
     },
     include: {
@@ -242,17 +238,13 @@ export async function getPendingScheduledSendsForToday() {
  * Get failed sends that should be retried
  */
 export async function getFailedSendsToRetry(maxRetries: number = 3) {
+  // Get failed sends that should be retried
+  // Note: We filter by remindersEnabled in the scheduler when creating these
   return await db.scheduledSend.findMany({
     where: {
       status: 'FAILED',
       retryCount: {
         lt: maxRetries,
-      },
-      reminderRule: {
-        group: {
-          remindersEnabled: true,
-          deletedAt: null,
-        },
       },
     },
     include: {
