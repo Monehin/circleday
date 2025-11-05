@@ -12,12 +12,11 @@ import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
 import { createBulkEvents } from '@/lib/actions/events-bulk'
 import { getContactEvents } from '@/lib/actions/events'
-import { Loader2, Calendar } from 'lucide-react'
-import { EventTypeSelector } from '@/components/ui/event-type-selector'
+import { Loader2 } from 'lucide-react'
+import { EventTypeSelector, EVENT_TEMPLATES } from '@/components/ui/event-type-selector'
 import { EventFormCard } from '@/components/events/event-form-card'
-import { EventSummaryList } from '@/components/events/event-summary-list'
+import { EventSummaryList, type SavedEvent } from '@/components/events/event-summary-list'
 import { useEventForm } from '@/lib/hooks/use-event-form'
-import { format } from 'date-fns'
 
 interface AddEventsModalProps {
   isOpen: boolean
@@ -33,7 +32,7 @@ interface AddEventsModalProps {
 
 export function AddEventsModal({ isOpen, onClose, contact, groupId, onSuccess }: AddEventsModalProps) {
   const [loading, setLoading] = useState(false)
-  const [existingEvents, setExistingEvents] = useState<any[]>([])
+  const [existingEvents, setExistingEvents] = useState<SavedEvent[]>([])
   const [loadingExisting, setLoadingExisting] = useState(false)
   
   const {
@@ -69,7 +68,32 @@ export function AddEventsModal({ isOpen, onClose, contact, groupId, onSuccess }:
     try {
       const result = await getContactEvents(contact.id)
       if (result.success && result.events) {
-        setExistingEvents(result.events)
+        // Map database events to SavedEvent format for consistent display
+        const mappedEvents: SavedEvent[] = result.events.map((event, index) => {
+          const date = new Date(event.date)
+          const month = date.getMonth() + 1
+          const day = date.getDate()
+          const year = event.yearKnown ? date.getFullYear() : undefined
+          
+          // Find matching template
+          let template = EVENT_TEMPLATES.find(t => {
+            if (event.type === 'BIRTHDAY') return t.id === 'birthday'
+            if (event.type === 'ANNIVERSARY') return t.id === 'anniversary'
+            return t.id === 'custom'
+          }) || EVENT_TEMPLATES[EVENT_TEMPLATES.length - 1]!
+
+          return {
+            id: `existing-${event.id}`,
+            template,
+            title: event.title || undefined,
+            month,
+            day,
+            year,
+            recurring: event.repeat,
+            notes: event.notes || undefined,
+          }
+        })
+        setExistingEvents(mappedEvents)
       }
     } catch (error) {
       console.error('Failed to load existing events:', error)
@@ -152,56 +176,27 @@ export function AddEventsModal({ isOpen, onClose, contact, groupId, onSuccess }:
               <Loader2 className="h-5 w-5 animate-spin mr-2" />
               Loading existing events...
             </div>
-          ) : existingEvents.length > 0 ? (
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/50 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <h3 className="font-semibold text-blue-900 dark:text-blue-100">
-                  Previously Added Events ({existingEvents.length})
-                </h3>
-              </div>
-              <div className="space-y-2">
-                {existingEvents.map((event) => {
-                  const eventDate = new Date(event.date)
-                  const eventTypeEmoji = event.type === 'BIRTHDAY' ? '🎂' : event.type === 'ANNIVERSARY' ? '💍' : '🎉'
-                  const eventTypeName = event.type === 'BIRTHDAY' ? 'Birthday' : event.type === 'ANNIVERSARY' ? 'Anniversary' : event.title || 'Custom Event'
-                  const dateStr = event.repeat
-                    ? format(eventDate, 'MMMM d') + (event.yearKnown ? ` (since ${format(eventDate, 'yyyy')})` : '')
-                    : format(eventDate, 'MMMM d, yyyy')
-                  
-                  return (
-                    <div key={event.id} className="flex items-center justify-between py-2 px-3 bg-white dark:bg-background rounded border border-blue-200 dark:border-blue-900/50">
-                      <div className="flex items-center gap-3">
-                        <span className="text-xl">{eventTypeEmoji}</span>
-                        <div>
-                          <p className="font-medium text-foreground">{eventTypeName}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {dateStr} • {event.repeat ? 'Recurring' : 'One-time'}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          ) : null}
+          ) : (
+            <EventSummaryList 
+              events={existingEvents}
+              title="Previously Added Events"
+              variant="info"
+              readonly={true}
+            />
+          )}
 
           {/* New Events Section */}
-          {savedEvents.length > 0 && (
-            <div className="border-t pt-4">
-              <h3 className="font-semibold text-foreground mb-3">New Events to Add ({savedEvents.length})</h3>
-              <EventSummaryList 
-                events={savedEvents}
-                onRemove={removeSavedEvent}
-                onEdit={editSavedEvent}
-              />
-            </div>
-          )}
+          <EventSummaryList 
+            events={savedEvents}
+            onRemove={removeSavedEvent}
+            onEdit={editSavedEvent}
+            title="New Events to Add"
+            variant="success"
+          />
 
           {/* Event Type Selector */}
           {showSelector && !currentEvent && (
-            <div className={savedEvents.length > 0 ? 'border-t pt-4' : ''}>
+            <div className={savedEvents.length > 0 || existingEvents.length > 0 ? 'border-t pt-4' : ''}>
               <EventTypeSelector onSelect={startAddingEvent} />
             </div>
           )}
