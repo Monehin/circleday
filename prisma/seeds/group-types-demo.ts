@@ -257,9 +257,9 @@ async function main() {
     update: {},
     create: {
       id: `user_${sarahManager.id}`,
-      name: sarahManager.name,
+      name: sarahManager.name || sarahManager.email,
       email: sarahManager.email,
-      phone: sarahManager.phone,
+      phone: sarahManager.phone || null,
       timezone: 'America/Los_Angeles',
     },
   })
