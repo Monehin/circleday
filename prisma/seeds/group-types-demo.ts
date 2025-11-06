@@ -275,9 +275,9 @@ async function main() {
 
   const johnContact = await db.contact.create({
     data: {
-      name: johnDev.name,
+      name: johnDev.name || johnDev.email,
       email: johnDev.email,
-      phone: johnDev.phone,
+      phone: johnDev.phone || null,
       timezone: 'America/Los_Angeles',
     },
   })
@@ -305,9 +305,9 @@ async function main() {
 
   const emilyContact = await db.contact.create({
     data: {
-      name: emilyDesigner.name,
+      name: emilyDesigner.name || emilyDesigner.email,
       email: emilyDesigner.email,
-      phone: emilyDesigner.phone,
+      phone: emilyDesigner.phone || null,
       timezone: 'America/Los_Angeles',
     },
   })
@@ -336,9 +336,9 @@ async function main() {
 
   const mikeContact = await db.contact.create({
     data: {
-      name: mikeLead.name,
+      name: mikeLead.name || mikeLead.email,
       email: mikeLead.email,
-      phone: mikeLead.phone,
+      phone: mikeLead.phone || null,
       timezone: 'America/Los_Angeles',
     },
   })
@@ -470,9 +470,9 @@ async function main() {
   // Create contacts and memberships for Smith family
   const dadSmithContact = await db.contact.create({
     data: {
-      name: dadSmith.name,
+      name: dadSmith.name || dadSmith.email,
       email: dadSmith.email,
-      phone: dadSmith.phone,
+      phone: dadSmith.phone || null,
       timezone: 'America/New_York',
     },
   })
@@ -501,9 +501,9 @@ async function main() {
 
   const momSmithContact = await db.contact.create({
     data: {
-      name: momSmith.name,
+      name: momSmith.name || momSmith.email,
       email: momSmith.email,
-      phone: momSmith.phone,
+      phone: momSmith.phone || null,
       timezone: 'America/New_York',
     },
   })
@@ -531,9 +531,9 @@ async function main() {
 
   const alexSmithContact = await db.contact.create({
     data: {
-      name: alexSmith.name,
+      name: alexSmith.name || alexSmith.email,
       email: alexSmith.email,
-      phone: alexSmith.phone,
+      phone: alexSmith.phone || null,
       timezone: 'America/New_York',
     },
   })
@@ -561,9 +561,9 @@ async function main() {
 
   const jamieSmithContact = await db.contact.create({
     data: {
-      name: jamieSmith.name,
+      name: jamieSmith.name || jamieSmith.email,
       email: jamieSmith.email,
-      phone: jamieSmith.phone,
+      phone: jamieSmith.phone || null,
       timezone: 'America/New_York',
     },
   })
@@ -687,9 +687,9 @@ async function main() {
   // Create contacts and memberships
   const lisaContact = await db.contact.create({
     data: {
-      name: lisaHR.name,
+      name: lisaHR.name || lisaHR.email,
       email: lisaHR.email,
-      phone: lisaHR.phone,
+      phone: lisaHR.phone || null,
       timezone: 'America/Chicago',
     },
   })
@@ -705,9 +705,9 @@ async function main() {
 
   const tomContact = await db.contact.create({
     data: {
-      name: tomSales.name,
+      name: tomSales.name || tomSales.email,
       email: tomSales.email,
-      phone: tomSales.phone,
+      phone: tomSales.phone || null,
       timezone: 'America/Chicago',
     },
   })
@@ -737,9 +737,9 @@ async function main() {
 
   const kateContact = await db.contact.create({
     data: {
-      name: kateContent.name,
+      name: kateContent.name || kateContent.email,
       email: kateContent.email,
-      phone: kateContent.phone,
+      phone: kateContent.phone || null,
       timezone: 'America/Chicago',
     },
   })
@@ -853,9 +853,9 @@ async function main() {
 
   const davidContact = await db.contact.create({
     data: {
-      name: davidJohnson.name,
+      name: davidJohnson.name || davidJohnson.email,
       email: davidJohnson.email,
-      phone: davidJohnson.phone,
+      phone: davidJohnson.phone || null,
       timezone: 'Europe/London',
     },
   })
@@ -884,9 +884,9 @@ async function main() {
 
   const susanContact = await db.contact.create({
     data: {
-      name: susanJohnson.name,
+      name: susanJohnson.name || susanJohnson.email,
       email: susanJohnson.email,
-      phone: susanJohnson.phone,
+      phone: susanJohnson.phone || null,
       timezone: 'Europe/London',
     },
   })
@@ -914,9 +914,9 @@ async function main() {
 
   const peterContact = await db.contact.create({
     data: {
-      name: peterJohnson.name,
+      name: peterJohnson.name || peterJohnson.email,
       email: peterJohnson.email,
-      phone: peterJohnson.phone,
+      phone: peterJohnson.phone || null,
       timezone: 'Europe/London',
     },
   })
