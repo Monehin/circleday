@@ -1,0 +1,23 @@
+name: Test SSH Connection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-ssh:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Test SSH Connection
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.WORKER_HOST }}
+          username: root
+          key: ${{ secrets.WORKER_SSH_KEY }}
+          script: |
+            echo "✅ SSH connection successful!"
+            echo "Hostname: $(hostname)"
+            echo "OS: $(cat /etc/os-release | grep PRETTY_NAME)"
+            echo "Docker: $(docker --version 2>&1 || echo 'Not installed')"
+            echo "Path /opt/circleday-worker exists: $([ -d /opt/circleday-worker ] && echo 'Yes' || echo 'No')"
+
