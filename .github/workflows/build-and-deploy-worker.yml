@@ -62,12 +62,21 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
+      - name: Prepare SSH key
+        shell: bash
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "${{ secrets.WORKER_SSH_KEY }}" > ~/.ssh/github_deploy
+          # Normalize line endings just in case
+          sed -i 's/\r$//' ~/.ssh/github_deploy || true
+          chmod 600 ~/.ssh/github_deploy
+
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.WORKER_HOST }}
           username: root
-          key: ${{ secrets.WORKER_SSH_KEY }}
+          key_path: ~/.ssh/github_deploy
           envs: GITHUB_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY
           script: |
             cd /opt/circleday-worker
