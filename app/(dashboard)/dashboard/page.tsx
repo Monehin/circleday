@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card'
 import { PageLoader } from '@/components/ui/loader'
 import { getGroups } from '@/lib/actions/groups'
 import { getUpcomingEvents } from '@/lib/actions/events'
+import { TestReminderButton } from '@/components/dashboard/test-reminder-button'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -91,12 +92,19 @@ export default function DashboardPage() {
           variants={fadeUp}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold text-foreground mb-2">
-            Welcome back! 👋
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Here's what's happening with your celebrations
-          </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-4xl font-bold text-foreground mb-2">
+                Welcome back! 👋
+              </h1>
+              <p className="text-muted-foreground text-lg">
+                Here's what's happening with your celebrations
+              </p>
+            </div>
+            {process.env.NEXT_PUBLIC_TEMPORAL_ENABLED !== 'false' && (
+              <TestReminderButton />
+            )}
+          </div>
         </motion.div>
 
         {/* Stats grid */}
