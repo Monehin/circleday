@@ -1,17 +1,16 @@
 name: Build & Deploy Worker
 
 on:
-  # Temporarily disabled - enable when VPS is ready
-  # push:
-  #   branches: [main]
-  #   paths:
-  #     - 'temporal/**'
-  #     - 'scripts/temporal-worker.ts'
-  #     - 'lib/**'
-  #     - 'Dockerfile.worker'
-  #     - 'docker-compose.yml'
-  #     - 'prisma/**'
-  workflow_dispatch: # Manual trigger only
+  push:
+    branches: [main]
+    paths:
+      - 'temporal/**'
+      - 'scripts/temporal-worker.ts'
+      - 'lib/**'
+      - 'Dockerfile.worker'
+      - 'docker-compose.yml'
+      - 'prisma/**'
+  workflow_dispatch: # Allows manual trigger
 
 env:
   REGISTRY: ghcr.io
