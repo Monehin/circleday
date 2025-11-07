@@ -1,0 +1,48 @@
+# CircleDay Temporal Worker
+# Optimized for Hetzner deployment
+
+FROM node:20-alpine AS base
+
+# Install required dependencies for Temporal worker
+RUN apk add --no-cache python3 make g++ git
+
+WORKDIR /app
+
+# Dependencies stage
+FROM base AS deps
+
+COPY package*.json ./
+COPY prisma ./prisma/
+
+RUN npm ci --only=production && \
+    npx prisma generate
+
+# Production stage
+FROM base AS runner
+
+WORKDIR /app
+
+# Copy dependencies
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/prisma ./prisma
+
+# Copy only worker-related code (NOT Next.js!)
+COPY temporal ./temporal
+COPY scripts/temporal-worker.ts ./scripts/temporal-worker.ts
+COPY lib ./lib
+COPY tsconfig.json ./
+COPY package.json ./
+
+# Install tsx for running TypeScript
+RUN npm install -g tsx
+
+# Environment
+ENV NODE_ENV=production
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD node -e "console.log('healthy')" || exit 1
+
+# Run worker
+CMD ["tsx", "scripts/temporal-worker.ts"]
+

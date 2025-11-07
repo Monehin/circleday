@@ -1,0 +1,41 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Next.js (not needed in worker)
+.next
+out
+build
+
+# Testing
+coverage
+*.test.ts
+*.test.tsx
+__tests__
+.playwright
+
+# Development
+.git
+.github
+.vscode
+.env*
+!.env.production
+*.md
+!README.md
+
+# Docs (not needed in worker)
+docs
+temporal/*.md
+
+# App code (not needed in worker)
+app
+components
+public
+styles
+
+# Misc
+.DS_Store
+*.log
+.turbo
+.vercel
+

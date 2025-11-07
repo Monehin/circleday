@@ -1,0 +1,41 @@
+# CircleDay Worker - Docker Compose
+# Uses pre-built images from GitHub Container Registry
+
+version: '3.8'
+
+services:
+  worker:
+    # Use pre-built image from GitHub Container Registry
+    image: ghcr.io/${GITHUB_REPOSITORY:-your-username/circleday}/worker:latest
+    
+    # Fallback: build locally if image not available
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    
+    container_name: circleday-worker
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      - NODE_ENV=production
+    networks:
+      - circleday-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  circleday-network:
+    driver: bridge
+
