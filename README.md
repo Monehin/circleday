@@ -1,333 +1,304 @@
 # CircleDay
 
-**Never miss a celebration** 🎉
+Never miss a celebration. CircleDay is a celebration management platform that helps teams and individuals remember and celebrate important dates.
 
-CircleDay is a celebration management platform that helps you remember and celebrate important dates with the people you care about.
+## Features
 
----
+- **Event Management**: Track birthdays, anniversaries, and custom celebrations
+- **Automated Reminders**: Durable workflow orchestration via Temporal
+- **Multi-Channel Notifications**: Email and SMS reminders
+- **Group Organization**: PERSONAL and TEAM group types
+- **Timezone-Aware Scheduling**: Respects user timezones
+- **Event Invite Links**: Public forms for collecting celebration dates
+- **Audit Trail**: Complete history of all reminder sends
 
-## 🎯 What is CircleDay?
+## Tech Stack
 
-CircleDay makes it effortless to:
-- **Remember** birthdays, anniversaries, and special occasions
-- **Send** timely reminders via email and SMS
-- **Collaborate** with groups to celebrate together
-- **Track** events with flexible group types (PERSONAL or TEAM)
+| Category | Technology |
+|----------|------------|
+| **Framework** | Next.js 16, React 19, TypeScript |
+| **Database** | PostgreSQL (Neon) + Prisma ORM |
+| **Authentication** | Better Auth |
+| **Workflows** | Temporal Cloud |
+| **UI** | Tailwind CSS, shadcn/ui, Framer Motion |
+| **Email** | Resend |
+| **SMS** | Twilio |
+| **Testing** | Vitest (133 tests), Playwright (26 E2E tests) |
 
-### Current Features
-
-- 🎂 Event management (birthdays, anniversaries, custom events)
-- 👥 Group organization with member management
-- 🏷️ **Group Types:** PERSONAL (one organizer) or TEAM (mutual reminders)
-- ⏰ Timezone-aware reminder scheduling
-- 📧 Email notifications with beautiful templates
-- 📱 SMS notifications via Twilio
-- 🔒 Secure authentication (magic links)
-- 📊 Reminder history and audit logs
-- 🔗 Shareable event invite links
-
----
-
-## 🛠️ Tech Stack
-
-**Framework:** Next.js 16.0.1 + React 19 + TypeScript 5.6  
-**Database:** Neon Postgres + Prisma 6  
-**Auth:** Better Auth 1.0  
-**UI:** Tailwind CSS 4 + shadcn/ui + Framer Motion  
-**Infrastructure:** Upstash (Redis + QStash), Resend (Email), Twilio (SMS)  
-**Testing:** Vitest (133 unit tests) + Playwright (26 E2E tests)
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
 - Node.js 20+ LTS
-- npm 10+
-- PostgreSQL database (Neon recommended)
-- Upstash account (Redis + QStash)
-- Resend account (emails)
+- PostgreSQL database
+- Temporal (Docker for local, Cloud for production)
 
 ### Installation
 
 ```bash
-# Clone and install
-git clone https://github.com/[username]/circleday.git
+# Clone repository
+git clone https://github.com/your-username/circleday.git
 cd circleday
+
+# Install dependencies
 npm install
 
-# Setup environment
-cp env.example .env.local
+# Configure environment
+cp .env.example .env.local
 # Edit .env.local with your credentials
 
-# Database setup
+# Setup database
 npx prisma migrate dev
 npx prisma generate
 
-# Start development
+# Start local Temporal server (Docker required)
+npm run temporal:start
+
+# Start development servers
 npm run dev
 ```
 
-Visit [http://localhost:3000](http://localhost:3000)
+Visit `http://localhost:3000`
+
+## Configuration
 
 ### Environment Variables
 
+#### Required
+
 ```bash
-# Database
-DATABASE_URL="your-neon-database-url"
-
-# Upstash
-UPSTASH_REDIS_REST_URL="your-redis-url"
-UPSTASH_REDIS_REST_TOKEN="your-redis-token"
-QSTASH_URL="https://qstash.upstash.io"
-QSTASH_TOKEN="your-qstash-token"
-
-# Email
-RESEND_API_KEY="your-resend-key"
-RESEND_FROM_EMAIL="CircleDay <hello@yourdomain.com>"
-
-# SMS (optional)
-TWILIO_ACCOUNT_SID="your-twilio-sid"
-TWILIO_AUTH_TOKEN="your-twilio-token"
-TWILIO_PHONE_NUMBER="your-twilio-number"
-
-# Auth (generate 32+ char secret)
-BETTER_AUTH_SECRET="your-secret-key-min-32-chars"
-BETTER_AUTH_URL="http://localhost:3000"
-
-# App
-NEXT_PUBLIC_APP_URL="http://localhost:3000"
+DATABASE_URL=postgresql://user:pass@host:5432/circleday
+BETTER_AUTH_SECRET=generate-32-char-secret
+BETTER_AUTH_URL=http://localhost:3000
 ```
 
----
+#### Temporal
 
-## 📦 Key Scripts
+**Local development:**
+```bash
+TEMPORAL_ADDRESS=localhost:7233
+TEMPORAL_NAMESPACE=default
+USE_TEMPORAL=true
+```
+
+**Production (Temporal Cloud):**
+```bash
+TEMPORAL_CLOUD_ENABLED=true
+TEMPORAL_ADDRESS=your-namespace.account.tmprl.cloud:7233
+TEMPORAL_NAMESPACE=your-namespace
+TEMPORAL_API_KEY=tmprl-your-api-key
+```
+
+#### Notifications
+
+```bash
+# Email (Resend)
+RESEND_API_KEY=re_your_key
+RESEND_FROM_EMAIL=CircleDay <hello@yourdomain.com>
+
+# SMS (Twilio, optional)
+TWILIO_ACCOUNT_SID=ACxxx
+TWILIO_AUTH_TOKEN=your_token
+TWILIO_PHONE_NUMBER=+1234567890
+```
+
+## Development
+
+### Available Commands
 
 ```bash
 # Development
-npm run dev              # Start dev server
+npm run dev              # Next.js + Worker
+npm run dev:next         # Next.js only
+npm run dev:worker       # Worker only
 npm run build            # Production build
 npm run start            # Start production server
 
+# Temporal
+npm run temporal:start   # Start local Temporal
+npm run temporal:stop    # Stop local Temporal
+npm run temporal:worker  # Start worker
+npm run temporal:ui      # Open Temporal UI
+
 # Testing
-npm test                 # Run unit tests (133 tests)
-npm run test:ui          # Interactive test UI
-npm run test:e2e         # E2E tests (26 tests)
-npm run type-check       # TypeScript check
+npm test                 # Run unit tests
+npm run test:e2e         # Run E2E tests
+npm run type-check       # TypeScript validation
 npm run lint             # ESLint
 
 # Database
-npx prisma studio        # Open database GUI
+npx prisma studio        # Database GUI
 npx prisma migrate dev   # Create migration
-npx prisma generate      # Generate Prisma client
-
-# Seeding
-npx tsx prisma/seeds/group-types-demo.ts  # Load demo data
+npx prisma generate      # Generate client
 ```
 
-**Test Status:** ✅ 133 unit + 26 E2E = 159 tests passing
-
----
-
-## 📁 Project Structure
+### Project Structure
 
 ```
 circleday/
-├── app/                      # Next.js app directory
-│   ├── (auth)/              # Auth pages
-│   ├── (dashboard)/         # Dashboard pages
-│   │   ├── groups/          # Group management
-│   │   ├── events/          # Event management
-│   │   └── profile/         # User profile
-│   └── api/                 # API routes
-├── components/
-│   ├── ui/                  # shadcn/ui components
-│   ├── dashboard/           # Dashboard components
-│   └── events/              # Event components
+├── app/                    # Next.js App Router
+│   ├── (auth)/            # Authentication pages
+│   ├── (dashboard)/       # Dashboard pages
+│   └── api/               # API routes
+├── components/            # React components
+│   ├── ui/               # Base UI components
+│   ├── dashboard/        # Dashboard components
+│   └── events/           # Event components
+├── temporal/              # Temporal workflows
+│   ├── workflows/        # Workflow definitions
+│   ├── activities/       # Activity implementations
+│   └── client.ts         # Temporal client
 ├── lib/
-│   ├── actions/             # Server Actions
-│   ├── services/            # Business logic
-│   │   ├── reminder-scheduler.ts
-│   │   └── reminder-sender.ts
-│   ├── db/                  # Prisma client
-│   └── auth/                # Auth config
+│   ├── actions/          # Server Actions
+│   ├── services/         # Business logic
+│   ├── db/              # Prisma client
+│   └── auth/            # Auth configuration
 ├── prisma/
-│   ├── schema.prisma        # Database schema
-│   ├── migrations/          # Migration history
-│   └── seeds/               # Demo data
-├── __tests__/               # Unit tests
-└── e2e/                     # E2E tests
+│   ├── schema.prisma    # Database schema
+│   ├── migrations/      # Migration history
+│   └── seeds/           # Seed data
+└── scripts/
+    └── temporal-worker.ts  # Worker entry point
 ```
 
----
-
-## 🎯 Group Types Feature
-
-CircleDay supports two group types for flexible reminder distribution:
-
-### 👤 PERSONAL Groups
-**Use case:** One person manages celebrations for others  
-**Behavior:** Only the group owner receives all reminders  
-**Example:** Manager tracking team birthdays
-
-### 👥 TEAM Groups
-**Use case:** Groups where everyone participates  
-**Behavior:** All members receive reminders EXCEPT the person being celebrated  
-**Example:** Family reminding each other of birthdays
-
-**Documentation:** See `GROUP_TYPES_IMPLEMENTATION.md`  
-**Demo Data:** Run `npx tsx prisma/seeds/group-types-demo.ts`
-
----
-
-## 🧪 Testing
+## Testing
 
 ```bash
-# Unit tests (133 tests)
+# Unit tests (133 passing)
 npm test
 
-# E2E tests (26 tests)
+# E2E tests (26 passing)
 npm run test:e2e
-
-# Run all tests
-npm run test:all
 
 # Type checking
 npm run type-check
+
+# All checks
+npm run test:all
 ```
 
-**Coverage Areas:**
-- ✅ Server Actions (groups, events, reminders, profile)
-- ✅ Business Logic (scheduler, sender, calculator)
-- ✅ UI Components
-- ✅ Database Integration
-- ✅ User Flows (E2E)
+**Test coverage:**
+- Server Actions (groups, events, reminders)
+- Business logic (scheduler, sender)
+- Temporal workflows
+- UI components
+- Full user flows (E2E)
 
----
+## Deployment
 
-## 📚 Documentation
+### Architecture
 
-- **`GROUP_TYPES_IMPLEMENTATION.md`** - Group types feature guide
-- **`prisma/seeds/README.md`** - Demo data guide
-- **`docs/TESTING_GUIDE.md`** - Testing setup and guide
-- **`docs/EVENT_INVITE_FEATURE.md`** - Event invite links
-- **`docs/REMINDER_SCHEDULING.md`** - Reminder system architecture
-- **`docs/EMAIL_SETUP.md`** - Email configuration
-- **`docs/RATE_LIMITING.md`** - Rate limiting setup
-- **`docs/NEXTJS_16_CACHE_OPTIMIZATION.md`** - Performance optimization
+```
+Vercel (Next.js) ──► Temporal Cloud ◄── VPS (Worker)
+       │
+       └─► Neon (Database)
+```
 
----
+### Quick Deploy
 
-## 🗄️ Database
+1. **Vercel**: Deploy Next.js application
+   ```bash
+   npm i -g vercel
+   vercel --prod
+   ```
 
-**21 Models** organized across authentication, groups, events, and reminders
+2. **Temporal Cloud**: Setup namespace and API key
+   - See `TEMPORAL_API_KEY_SETUP.md`
 
-**Core Models:**
+3. **VPS**: Deploy worker
+   - See `VPS_SETUP_CHECKLIST.md`
+
+4. **GitHub Actions**: Auto-deployment configured
+   - See `.github/workflows/build-and-deploy-worker.yml`
+
+**Complete guide**: See `DEPLOYMENT.md`
+
+## Group Types
+
+CircleDay supports two group types:
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| **PERSONAL** | Owner receives all reminders | Manager tracking team birthdays |
+| **TEAM** | Members remind each other | Family/friend group celebrations |
+
+Details: `GROUP_TYPES_IMPLEMENTATION.md`
+
+## Documentation
+
+### Core
+
+- `QUICK_START_PRODUCTION.md` - 30-minute production setup
+- `DEPLOYMENT.md` - Complete deployment guide
+- `TEMPORAL_API_KEY_SETUP.md` - Temporal Cloud authentication
+- `VPS_SETUP_CHECKLIST.md` - VPS worker configuration
+- `GROUP_TYPES_IMPLEMENTATION.md` - Group types feature
+
+### Additional
+
+- `.github/workflows/README.md` - CI/CD documentation
+- `prisma/seeds/README.md` - Demo data guide
+- `docs/` - Additional technical documentation
+
+## Database
+
+**Schema**: 21 models organized across authentication, groups, events, and reminders
+
+**Key models:**
 - User, Session, Account (authentication)
 - Group, Membership, Contact (organization)
-- Event, ReminderRule, ScheduledSend, SendLog (reminders)
+- Event, ReminderRule, ScheduledSend (reminders)
 - EventInviteToken, AuditLog, Suppression (tracking)
 
 **Features:**
-- 20+ strategic indexes
+- 20+ optimized indexes
 - Soft delete support
-- Full audit trail
+- Complete audit trail
 - Type-safe enums
 
----
+View schema: `npx prisma studio`
 
-## 🔒 Security
+## Security
 
-- Security headers (CSP, HSTS, X-Frame-Options)
+- CSP, HSTS, and security headers
 - Rate limiting on all endpoints
-- Centralized error handling
 - Magic link authentication
-- Audit trail for all changes
-- Zod validation for all inputs
+- Audit trail for all operations
+- Input validation (Zod)
 - SQL injection protection (Prisma)
+- Environment-based configuration
 
----
+## Performance
 
-## 🚀 Deployment
+- Server-side rendering (Next.js)
+- Optimistic UI updates
+- Database connection pooling
+- Efficient query patterns
+- CDN asset delivery (Vercel)
+- Workflow retries (Temporal)
 
-**Recommended:** Vercel + Neon
+## Contributing
 
-```bash
-# Install Vercel CLI
-npm i -g vercel
+This is a private project. For bug reports or feature requests, please open an issue.
 
-# Deploy
-vercel
+### Development Standards
 
-# Add environment variables in Vercel dashboard
-```
-
-**Production Checklist:**
-- [ ] Set all environment variables
-- [ ] Configure production database (Neon)
-- [ ] Set up cron jobs for reminders
-- [ ] Configure domain and CORS
-- [ ] Enable error tracking (Sentry)
-- [ ] Set up uptime monitoring
-
----
-
-## 📊 Current Status
-
-**Phase:** Core features complete, enhancing functionality  
-**Tests:** 159 passing (133 unit + 26 E2E)  
-**Build:** ✅ Successful  
-**TypeScript:** ✅ No errors
-
-**Recent Additions:**
-- ✅ Group types (PERSONAL / TEAM)
-- ✅ Event invite links
-- ✅ Reminder history dashboard
-- ✅ SMS notifications
-- ✅ Comprehensive test coverage
-
----
-
-## 🎨 Design System
-
-**CircleDay Custom Theme:**
-- Celebration colors (warm orange)
-- Golden warmth accents
-- Refined neutral tones
-- Purposeful dark mode
-- Custom shadows (soft, lifted, floating)
-- Mobile-first responsive design
-
----
-
-## 🤝 Contributing
-
-This is a private project following modern development practices.
-
-**Standards:**
 - TypeScript strict mode
-- Comprehensive testing
+- Comprehensive test coverage
 - Server Actions over API routes
-- Component composition
-- Semantic HTML
-- Accessibility first
+- Component composition patterns
+- Semantic HTML and accessibility
 
----
-
-## 📄 License
+## License
 
 Private - All rights reserved
 
----
+## Support
 
-## 🔗 Quick Links
-
-- **Health Check:** http://localhost:3000/api/health
-- **Database GUI:** `npx prisma studio`
-- **Test UI:** `npm run test:ui`
-- **Documentation:** `/docs` folder
+- **Issues**: GitHub Issues
+- **Documentation**: `/docs` directory
+- **Health Check**: `/api/health`
 
 ---
 
-**Built with ❤️ using Next.js 16, React 19, and modern web technologies**
+Built with Next.js 16, React 19, Temporal, and modern web technologies.
