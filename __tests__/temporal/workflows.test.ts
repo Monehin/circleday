@@ -35,7 +35,7 @@ describe('Temporal Workflows', () => {
 
   beforeAll(async () => {
     testEnv = await TestWorkflowEnvironment.createLocal()
-  })
+  }, 30000) // 30 second timeout for setup
 
   afterAll(async () => {
     await testEnv?.teardown()
@@ -57,7 +57,7 @@ describe('Temporal Workflows', () => {
       const worker = await Worker.create({
         connection: nativeConnection,
         taskQueue: 'test-queue',
-        workflowsPath: require.resolve('@/temporal/workflows/reminder.workflow'),
+        workflowsPath: require.resolve('../../temporal/workflows/index.ts'),
         activities: {
           validateEventData: async () => {},
           sendReminderEmail: async (params: any) => {
@@ -121,7 +121,7 @@ describe('Temporal Workflows', () => {
       const worker = await Worker.create({
         connection: nativeConnection,
         taskQueue: 'test-queue',
-        workflowsPath: require.resolve('@/temporal/workflows/reminder.workflow'),
+        workflowsPath: require.resolve('../../temporal/workflows/index.ts'),
         activities: {
           validateEventData: async () => {},
           sendReminderEmail: async () => {
@@ -199,7 +199,7 @@ describe('Temporal Workflows', () => {
       const worker = await Worker.create({
         connection: nativeConnection,
         taskQueue: 'test-queue',
-        workflowsPath: require.resolve('@/temporal/workflows/reminder.workflow'),
+        workflowsPath: require.resolve('../../temporal/workflows/index.ts'),
         activities: {
           validateEventData: async () => {},
           sendReminderEmail: async () => {

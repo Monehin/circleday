@@ -10,6 +10,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['__tests__/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['__tests__/e2e/**', 'node_modules/**', '.next/**'],
+    testTimeout: 20000, // 20 seconds for Temporal workflow tests
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
