@@ -199,8 +199,8 @@ describe('Group Types - Reminder Distribution', () => {
       expect(db.scheduledSend.upsert).toHaveBeenCalledTimes(1)
 
       // Verify the reminder is for the owner
-      const call = vi.mocked(db.scheduledSend.upsert).mock.calls[0][0]
-      expect(call.create.recipientUserId).toBe('owner-user')
+      const call = vi.mocked(db.scheduledSend.upsert).mock.calls[0]?.[0]
+      expect(call?.create.recipientUserId).toBe('owner-user')
     })
 
     it('should send reminders to owner for all member events', async () => {
@@ -1068,8 +1068,8 @@ describe('Group Types - Reminder Distribution', () => {
       // Should behave as PERSONAL: only owner gets reminder
       expect(result.scheduled).toBe(1)
       
-      const call = vi.mocked(db.scheduledSend.upsert).mock.calls[0][0]
-      expect(call.create.recipientUserId).toBe('owner-user')
+      const call = vi.mocked(db.scheduledSend.upsert).mock.calls[0]?.[0]
+      expect(call?.create.recipientUserId).toBe('owner-user')
     })
   })
 })

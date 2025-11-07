@@ -51,7 +51,7 @@ describe('Groups Actions', () => {
       const { auth } = await import('@/lib/auth/config')
       vi.mocked(auth.api.getSession).mockResolvedValueOnce(null)
 
-      const result = await createGroup({ name: 'Test Group' })
+      const result = await createGroup({ name: 'Test Group', type: 'PERSONAL' })
 
       expect(result).toEqual({ error: 'Unauthorized' })
     })
@@ -62,7 +62,7 @@ describe('Groups Actions', () => {
         user: { id: 'user-1', email: 'test@test.com', name: 'Test' },
       } as any)
 
-      const result = await createGroup({ name: 'A' }) // Too short
+      const result = await createGroup({ name: 'A', type: 'PERSONAL' }) // Too short
 
       expect(result.error).toBeDefined()
     })
@@ -101,7 +101,7 @@ describe('Groups Actions', () => {
         })
       })
 
-      const result = await createGroup({ name: 'Test Group' })
+      const result = await createGroup({ name: 'Test Group', type: 'PERSONAL' })
 
       expect(result.success).toBe(true)
       expect(result.group).toBeDefined()

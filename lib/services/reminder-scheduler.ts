@@ -1,6 +1,67 @@
 import { db } from '@/lib/db'
 import { startOfDay, addYears, differenceInDays, addDays, format } from 'date-fns'
 import { ChannelType, SendStatus } from '@prisma/client'
+import { getTemporalClient } from '@/temporal/client'
+import type { ReminderInput } from '@/temporal/workflows/reminder.workflow'
+
+// Toggle between QStash (legacy) and Temporal (new)
+const USE_TEMPORAL = process.env.USE_TEMPORAL === 'true'
+
+/**
+ * Schedule a reminder using Temporal workflows
+ */
+async function scheduleReminderWithTemporal(params: {
+  idempotencyKey: string
+  event: any
+  nextOccurrence: Date
+  offset: number
+  channel: ChannelType
+  recipient: { userId: string; email: string; phone: string | null }
+  groupName: string
+}): Promise<void> {
+  const { idempotencyKey, event, nextOccurrence, offset, channel, recipient, groupName } = params
+  
+  const daysBeforeEvent = Math.abs(offset)
+  
+  // Prepare workflow input
+  const input: ReminderInput = {
+    eventId: event.id,
+    eventName: event.name,
+    eventDate: nextOccurrence,
+    recipientEmail: recipient.email,
+    recipientName: recipient.email.split('@')[0] || 'User', // Fallback name
+    groupName,
+    daysBeforeEvent,
+    channels: [channel],
+  }
+  
+  // Add phone if available
+  if (recipient.phone) {
+    input.recipientPhone = recipient.phone
+  }
+  
+  const client = await getTemporalClient()
+  
+  // Start workflow with idempotent workflow ID
+  const workflowId = `reminder-${idempotencyKey}`
+  
+  try {
+    await client.workflow.start('reminderWorkflow', {
+      taskQueue: 'circleday-tasks',
+      workflowId,
+      args: [input],
+      // Workflows are idempotent - starting the same workflowId is a no-op
+    })
+    console.log(`✅ Started Temporal workflow: ${workflowId}`)
+  } catch (error: any) {
+    // WorkflowExecutionAlreadyStartedError is expected and fine (idempotency)
+    if (error?.name === 'WorkflowExecutionAlreadyStartedError') {
+      console.log(`ℹ️ Workflow already exists: ${workflowId}`)
+    } else {
+      throw error
+    }
+  }
+}
 
 /**
  * Calculate the next occurrence of an event (for recurring events like birthdays)
@@ -193,23 +254,37 @@ export async function scheduleUpcomingReminders(): Promise<{
               )
               
               try {
-                await db.scheduledSend.upsert({
-                  where: { idempotencyKey },
-                  create: {
-                    eventId: event.id,
-                    recipientUserId: recipient.userId, // NEW: Store recipient
-                    targetDate: nextOccurrence,
+                if (USE_TEMPORAL) {
+                  // Use Temporal workflows for durable execution
+                  await scheduleReminderWithTemporal({
+                    idempotencyKey,
+                    event,
+                    nextOccurrence,
                     offset,
                     channel,
-                    dueAtUtc: sendDate,
-                    status: 'PENDING',
-                    idempotencyKey,
-                  },
-                  update: {
-                    dueAtUtc: sendDate,
-                    recipientUserId: recipient.userId, // NEW: Update recipient
-                  },
-                })
+                    recipient,
+                    groupName: rule.group.name,
+                  })
+                } else {
+                  // Legacy: Use ScheduledSend records
+                  await db.scheduledSend.upsert({
+                    where: { idempotencyKey },
+                    create: {
+                      eventId: event.id,
+                      recipientUserId: recipient.userId,
+                      targetDate: nextOccurrence,
+                      offset,
+                      channel,
+                      dueAtUtc: sendDate,
+                      status: 'PENDING',
+                      idempotencyKey,
+                    },
+                    update: {
+                      dueAtUtc: sendDate,
+                      recipientUserId: recipient.userId,
+                    },
+                  })
+                }
                 scheduled++
               } catch (error) {
                 console.error('Failed to schedule reminder:', error)
