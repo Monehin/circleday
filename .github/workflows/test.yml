@@ -3,12 +3,26 @@ name: Tests
 on:
   push:
     branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   pull_request:
     branches: [main, develop]
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     
     steps:
       - uses: actions/checkout@v4
@@ -33,9 +47,12 @@ jobs:
         with:
           files: ./coverage/coverage-final.json
           flags: unittests
-
+        
   e2e-tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
     
     steps:
       - uses: actions/checkout@v4

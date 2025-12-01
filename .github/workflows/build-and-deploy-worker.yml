@@ -10,33 +10,56 @@ on:
       - 'Dockerfile.worker'
       - 'docker-compose.yml'
       - 'prisma/**'
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
+
+concurrency:
+  group: build-deploy-worker-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/worker
 
 jobs:
+  preflight:
+    name: Preflight - SSH connectivity
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify required secrets
+        run: |
+          test -n "${{ secrets.WORKER_HOST }}" || { echo "Missing WORKER_HOST secret"; exit 1; }
+          test -n "${{ secrets.WORKER_SSH_KEY }}" || { echo "Missing WORKER_SSH_KEY secret"; exit 1; }
+      - name: Test SSH connection
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.WORKER_HOST }}
+          username: root
+          key: ${{ secrets.WORKER_SSH_KEY }}
+          script_stop: true
+          command_timeout: 2m
+          script: |
+            echo "✅ SSH connection OK"
+            uname -a || true
+
   build:
+    name: Build and push worker image
+    needs: preflight
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
@@ -45,7 +68,6 @@ jobs:
           tags: |
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -58,63 +80,43 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
+    name: Deploy to VPS
     needs: build
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 10
     steps:
-      - name: Prepare SSH key (workspace)
-        shell: bash
-        run: |
-          # Write key to workspace so it's visible inside the action container at /github/workspace
-          # Use %b to expand literal \n into real newlines if secret was pasted as single-line
-          printf '%b' "${{ secrets.WORKER_SSH_KEY }}" > "${GITHUB_WORKSPACE}/worker_ssh_key"
-          # Ensure trailing newline
-          echo >> "${GITHUB_WORKSPACE}/worker_ssh_key"
-          # Normalize Windows line endings just in case
-          sed -i 's/\r$//' "${GITHUB_WORKSPACE}/worker_ssh_key" || true
-          chmod 600 "${GITHUB_WORKSPACE}/worker_ssh_key"
-          # Quick sanity check
-          test -s "${GITHUB_WORKSPACE}/worker_ssh_key"
-          # Show first/last line and line count for debugging (does not reveal the key contents)
-          echo "First line: $(head -1 ${GITHUB_WORKSPACE}/worker_ssh_key)"
-          echo "Last line:  $(tail -1 ${GITHUB_WORKSPACE}/worker_ssh_key)"
-          echo "Total lines: $(wc -l < ${GITHUB_WORKSPACE}/worker_ssh_key)"
-          # Validate key format if ssh-keygen is available
-          if command -v ssh-keygen >/dev/null 2>&1; then
-            ssh-keygen -l -f "${GITHUB_WORKSPACE}/worker_ssh_key" || true
-          fi
-
-      - name: Deploy to VPS
+      - name: Deploy to VPS (pull & restart worker)
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.WORKER_HOST }}
           username: root
-          # Use path inside the action container (/github/workspace is mounted)
-          key_path: /github/workspace/worker_ssh_key
-          envs: GITHUB_TOKEN,GITHUB_ACTOR,GITHUB_REPOSITORY
+          key: ${{ secrets.WORKER_SSH_KEY }}
+          script_stop: true
+          command_timeout: 15m
           script: |
-            cd /opt/circleday-worker
-            
-            # Pull latest code (for docker-compose.yml updates)
-            git pull origin main
-            
+            set -euo pipefail
+            # Ensure deploy directory exists and repo is present
+            if [ ! -d /opt/circleday-worker/.git ]; then
+              mkdir -p /opt/circleday-worker
+              cd /opt/circleday-worker
+              git clone https://github.com/${{ github.repository }} .
+            else
+              cd /opt/circleday-worker
+            fi
+            # Sync docker-compose and scripts
+            git fetch origin
+            git reset --hard origin/main
             # Set GitHub repo env var for docker-compose
             export GITHUB_REPOSITORY=${{ github.repository }}
-            
             # Login to GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # Pull new image
-            docker compose pull worker
-            
+            # Pull new image (fallback to local build if pull fails)
+            docker compose pull worker || docker compose build --no-cache worker
             # Restart worker
             docker compose up -d worker
-            
-            # Cleanup old images
-            docker image prune -f
-            
-            # Show status
-            echo "✅ Deployment complete!"
+            # Status and recent logs
             docker compose ps
-            docker compose logs --tail=30 worker
+            docker compose logs --tail=50 worker || true
+            # Cleanup old images (non-blocking)
+            docker image prune -f || true
 
