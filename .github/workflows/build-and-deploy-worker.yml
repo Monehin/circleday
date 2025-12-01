@@ -112,27 +112,9 @@ jobs:
             mkdir -p /opt/circleday-worker
             cd /opt/circleday-worker
             # Mark as safe directory to avoid git ownership protection failures
-            git config --global --add safe.directory /opt/circleday-worker
-            # If repo exists, update; else bootstrap safely even if dir is non-empty
-            if [ -d .git ]; then
-              # Ensure origin is set (avoid non-zero exit)
-              remote_url="$(git config --get remote.origin.url || true)"
-              if [ -z "$remote_url" ]; then
-                git remote add origin https://github.com/${{ github.repository }}
-              fi
-              git fetch origin
-              git reset --hard origin/main
-            else
-              if [ -z "$(ls -A .)" ]; then
-                git clone https://github.com/${{ github.repository }} .
-              else
-                git init .
-                git remote remove origin >/dev/null 2>&1 || true
-                git remote add origin https://github.com/${{ github.repository }}
-                git fetch origin
-                git checkout -B main origin/main
-              fi
-            fi
+            git config --global --add safe.directory /opt/circleday-worker || true
+            # Bootstrap/update repo in one line to avoid per-line non-zero exits
+            if [ -d .git ]; then remote_url="$(git config --get remote.origin.url || true)"; [ -n "$remote_url" ] || git remote add origin https://github.com/${{ github.repository }}; git fetch origin; git reset --hard origin/main; else if [ -z "$(ls -A .)" ]; then git clone https://github.com/${{ github.repository }} .; else git init .; git remote remove origin >/dev/null 2>&1 || true; git remote add origin https://github.com/${{ github.repository }}; git fetch origin; git checkout -B main origin/main; fi; fi
             # Set GitHub repo env var for docker-compose
             export GITHUB_REPOSITORY=${{ github.repository }}
             # Detect docker compose CLI
