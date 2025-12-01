@@ -91,7 +91,7 @@ jobs:
           host: ${{ secrets.WORKER_HOST }}
           username: root
           key: ${{ secrets.WORKER_SSH_KEY }}
-          script_stop: true
+          script_stop: false
           command_timeout: 15m
           script: |
             set -Eeuo pipefail
