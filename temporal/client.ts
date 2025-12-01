@@ -24,9 +24,15 @@ const getConnectionOptions = () => {
     // Support both API Key and mTLS authentication
     if (process.env.TEMPORAL_API_KEY) {
       // API Key authentication (simpler, recommended!)
+      const address = process.env.TEMPORAL_ADDRESS
+      const serverName = address.split(':')[0]
       return {
-        address: process.env.TEMPORAL_ADDRESS,
+        address,
         apiKey: process.env.TEMPORAL_API_KEY,
+        // Ensure TLS is enabled when using API key with Temporal Cloud
+        tls: {
+          serverNameOverride: serverName,
+        },
       }
     } else if (process.env.TEMPORAL_CLIENT_CERT && process.env.TEMPORAL_CLIENT_KEY) {
       // mTLS certificate authentication (alternative method)

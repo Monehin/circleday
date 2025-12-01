@@ -24,12 +24,18 @@ async function run() {
   try {
     // Connect to Temporal
     const connectionOptions: any = { address: temporalAddress }
+    const serverName = temporalAddress.split(':')[0]
 
     // Temporal Cloud authentication
     if (process.env.TEMPORAL_CLOUD_ENABLED === 'true') {
       if (process.env.TEMPORAL_API_KEY) {
         // API Key authentication (simpler, recommended!)
         connectionOptions.apiKey = process.env.TEMPORAL_API_KEY
+        // Ensure TLS is enabled when using API key with Temporal Cloud
+        connectionOptions.tls = {
+          ...(connectionOptions.tls ?? {}),
+          serverNameOverride: serverName,
+        }
       } else if (process.env.TEMPORAL_CLIENT_CERT && process.env.TEMPORAL_CLIENT_KEY) {
         // mTLS certificate authentication (alternative)
         connectionOptions.tls = {
