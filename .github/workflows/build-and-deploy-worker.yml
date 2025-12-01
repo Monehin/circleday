@@ -114,7 +114,12 @@ jobs:
             # Mark as safe directory to avoid git ownership protection failures
             git config --global --add safe.directory /opt/circleday-worker
             # If repo exists, update; else bootstrap safely even if dir is non-empty
-            if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            if [ -d .git ]; then
+              # Ensure origin is set (avoid non-zero exit)
+              remote_url="$(git config --get remote.origin.url || true)"
+              if [ -z "$remote_url" ]; then
+                git remote add origin https://github.com/${{ github.repository }}
+              fi
               git fetch origin
               git reset --hard origin/main
             else
