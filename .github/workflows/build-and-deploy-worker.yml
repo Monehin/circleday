@@ -94,10 +94,25 @@ jobs:
           script_stop: true
           command_timeout: 15m
           script: |
-            set -euo pipefail
+            set -Eeuo pipefail
+            set -x
+            # Ensure git is available
+            if ! command -v git >/dev/null 2>&1; then
+              if command -v apt-get >/dev/null 2>&1; then
+                apt-get update -y && apt-get install -y git
+              elif command -v dnf >/dev/null 2>&1; then
+                dnf install -y git
+              elif command -v yum >/dev/null 2>&1; then
+                yum install -y git
+              else
+                echo "git is required but not installed and no package manager found"; exit 1
+              fi
+            fi
             # Ensure deploy directory exists
             mkdir -p /opt/circleday-worker
             cd /opt/circleday-worker
+            # Mark as safe directory to avoid git ownership protection failures
+            git config --global --add safe.directory /opt/circleday-worker
             # If repo exists, update; else bootstrap safely even if dir is non-empty
             if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
               git fetch origin
@@ -115,15 +130,24 @@ jobs:
             fi
             # Set GitHub repo env var for docker-compose
             export GITHUB_REPOSITORY=${{ github.repository }}
+            # Detect docker compose CLI
+            COMPOSE="docker compose"
+            if ! docker compose version >/dev/null 2>&1; then
+              if command -v docker-compose >/dev/null 2>&1; then
+                COMPOSE="docker-compose"
+              else
+                echo "docker compose (or docker-compose) is required"; exit 1
+              fi
+            fi
             # Login to GitHub Container Registry
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             # Pull new image (fallback to local build if pull fails)
-            docker compose pull worker || docker compose build --no-cache worker
+            $COMPOSE pull worker || $COMPOSE build --no-cache worker
             # Restart worker
-            docker compose up -d worker
+            $COMPOSE up -d worker
             # Status and recent logs
-            docker compose ps
-            docker compose logs --tail=50 worker || true
+            $COMPOSE ps
+            $COMPOSE logs --tail=50 worker || true
             # Cleanup old images (non-blocking)
             docker image prune -f || true
 
