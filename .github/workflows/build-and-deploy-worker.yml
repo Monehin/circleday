@@ -95,17 +95,24 @@ jobs:
           command_timeout: 15m
           script: |
             set -euo pipefail
-            # Ensure deploy directory exists and repo is present
-            if [ ! -d /opt/circleday-worker/.git ]; then
-              mkdir -p /opt/circleday-worker
-              cd /opt/circleday-worker
-              git clone https://github.com/${{ github.repository }} .
+            # Ensure deploy directory exists
+            mkdir -p /opt/circleday-worker
+            cd /opt/circleday-worker
+            # If repo exists, update; else bootstrap safely even if dir is non-empty
+            if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+              git fetch origin
+              git reset --hard origin/main
             else
-              cd /opt/circleday-worker
+              if [ -z "$(ls -A .)" ]; then
+                git clone https://github.com/${{ github.repository }} .
+              else
+                git init .
+                git remote remove origin >/dev/null 2>&1 || true
+                git remote add origin https://github.com/${{ github.repository }}
+                git fetch origin
+                git checkout -B main origin/main
+              fi
             fi
-            # Sync docker-compose and scripts
-            git fetch origin
-            git reset --hard origin/main
             # Set GitHub repo env var for docker-compose
             export GITHUB_REPOSITORY=${{ github.repository }}
             # Login to GitHub Container Registry
