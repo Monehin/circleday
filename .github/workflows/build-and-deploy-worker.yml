@@ -18,7 +18,6 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}/worker
 
 jobs:
   preflight:
@@ -40,7 +39,6 @@ jobs:
           command_timeout: 2m
           script: |
             echo "✅ SSH connection OK"
-            uname -a || true
 
   build:
     name: Build and push worker image
@@ -96,11 +94,10 @@ jobs:
           host: ${{ secrets.WORKER_HOST }}
           username: root
           key: ${{ secrets.WORKER_SSH_KEY }}
-          script_stop: false
+          script_stop: true
           command_timeout: 15m
           script: |
-            set -Eeuo pipefail
-            set -x
+            set -euo pipefail
             # Ensure git is available
             if ! command -v git >/dev/null 2>&1; then
               if command -v apt-get >/dev/null 2>&1; then

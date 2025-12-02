@@ -1,8 +1,5 @@
 # CircleDay Worker - Docker Compose
 # Uses pre-built images from GitHub Container Registry
-
-version: '3.8'
-
 services:
   worker:
     # Use pre-built image from GitHub Container Registry
