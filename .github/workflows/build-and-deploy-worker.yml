@@ -60,11 +60,16 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute lowercased image name
+        id: repo
+        run: |
+          REPO_LC="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
+          echo "image=${{ env.REGISTRY }}/${REPO_LC}/worker" >> "$GITHUB_OUTPUT"
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ steps.repo.outputs.image }}
           tags: |
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
@@ -115,8 +120,8 @@ jobs:
             git config --global --add safe.directory /opt/circleday-worker || true
             # Bootstrap/update repo in one line to avoid per-line non-zero exits
             if [ -d .git ]; then remote_url="$(git config --get remote.origin.url || true)"; [ -n "$remote_url" ] || git remote add origin https://github.com/${{ github.repository }}; git fetch origin; git reset --hard origin/main; else if [ -z "$(ls -A .)" ]; then git clone https://github.com/${{ github.repository }} .; else git init .; git remote remove origin >/dev/null 2>&1 || true; git remote add origin https://github.com/${{ github.repository }}; git fetch origin; git checkout -B main origin/main; fi; fi
-            # Set GitHub repo env var for docker-compose
-            export GITHUB_REPOSITORY=${{ github.repository }}
+            # Set GitHub repo env var for docker-compose (lowercase to satisfy image reference rules)
+            export GITHUB_REPOSITORY="$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')"
             # Detect docker compose CLI
             COMPOSE="docker compose"
             if ! docker compose version >/dev/null 2>&1; then
