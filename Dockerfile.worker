@@ -40,6 +40,7 @@ RUN npm install -g tsx
 
 # Environment
 ENV NODE_ENV=production
+ENV NODE_OPTIONS="--max-old-space-size=256"
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
