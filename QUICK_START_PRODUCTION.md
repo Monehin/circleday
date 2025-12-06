@@ -295,11 +295,11 @@ Once everything is working:
 ---
 
 ## 📖 Detailed Guides
-
+ 
 - **Temporal Setup:** `TEMPORAL_API_KEY_SETUP.md`
 - **VPS Configuration:** `VPS_SETUP_CHECKLIST.md`
-- **Deployment Automation:** `SETUP_GITHUB_REGISTRY.md`
-- **Complete Production Guide:** `TEMPORAL_PRODUCTION.md`
+- **Deployment Automation:** `.github/workflows/README.md`
+- **Complete Production Guide:** `DEPLOYMENT.md`
 
 ---
 
