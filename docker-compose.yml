@@ -3,7 +3,7 @@
 services:
   worker:
     # Use pre-built image from GitHub Container Registry
-    image: ghcr.io/${GITHUB_REPOSITORY:-your-username/circleday}/worker:latest
+    image: ghcr.io/monehin/circleday/worker:latest
     
     # Fallback: build locally if image not available
     build:
