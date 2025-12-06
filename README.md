@@ -226,19 +226,16 @@ Details: `GROUP_TYPES_IMPLEMENTATION.md`
 
 ## Documentation
 
-### Core
+Start here: `DOCUMENTATION_INDEX.md`
 
-- `QUICK_START_PRODUCTION.md` - 30-minute production setup
-- `DEPLOYMENT.md` - Complete deployment guide
-- `TEMPORAL_API_KEY_SETUP.md` - Temporal Cloud authentication
-- `VPS_SETUP_CHECKLIST.md` - VPS worker configuration
-- `GROUP_TYPES_IMPLEMENTATION.md` - Group types feature
-
-### Additional
-
-- `.github/workflows/README.md` - CI/CD documentation
-- `prisma/seeds/README.md` - Demo data guide
-- `docs/` - Additional technical documentation
+### Quick links
+- `QUICK_START_PRODUCTION.md` – 30‑minute production setup
+- `DEPLOYMENT.md` – Complete deployment guide
+- `TEMPORAL_API_KEY_SETUP.md` – Temporal Cloud authentication
+- `VPS_SETUP_CHECKLIST.md` – VPS worker configuration
+- `.github/workflows/README.md` – CI/CD documentation
+- `GROUP_TYPES_IMPLEMENTATION.md` – Group types feature
+- `prisma/seeds/README.md` – Demo data guide
 
 ## Database
 
