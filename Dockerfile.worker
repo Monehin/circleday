@@ -1,10 +1,12 @@
 # CircleDay Temporal Worker
 # Optimized for Hetzner deployment
 
-FROM node:20-alpine AS base
+FROM node:20-bookworm-slim AS base
 
-# Install required dependencies for Temporal worker
-RUN apk add --no-cache python3 make g++ git
+# Install required dependencies for Temporal worker (glibc-based)
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends python3 make g++ git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
