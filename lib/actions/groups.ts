@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth/config'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { getTemporalClient } from '@/temporal/client'
+import { pauseSignal, resumeSignal } from '@/temporal/workflows/reminder.workflow'
 
 const createGroupSchema = z.object({
   name: z.string().min(2).max(50).trim(),
@@ -22,8 +23,7 @@ async function controlTemporalWorkflowsForGroup(
   enabled: boolean
 ): Promise<void> {
   const client = await getTemporalClient()
-  
-  // Get all events for this group
+
   const events = await db.event.findMany({
     where: {
       contact: {
@@ -37,33 +37,46 @@ async function controlTemporalWorkflowsForGroup(
     },
     select: { id: true },
   })
-  
-  // For each event, find and control its workflows
-  // Workflow IDs follow the pattern: reminder-{eventId}-{...}
-  const signal = enabled ? 'resume' : 'pause'
+
+  const scheduledSends = await db.scheduledSend.findMany({
+    where: {
+      eventId: {
+        in: events.map(event => event.id),
+      },
+      status: {
+        in: ['PENDING', 'QUEUED'],
+      },
+    },
+  })
+
+  const signalName = enabled ? 'resume' : 'pause'
+  const handledWorkflows = new Set<string>()
   let signaled = 0
   let errors = 0
-  
-  for (const event of events) {
+
+  for (const send of scheduledSends) {
+    if (handledWorkflows.has(send.idempotencyKey)) {
+      continue
+    }
+    handledWorkflows.add(send.idempotencyKey)
+
+    const workflowId = `reminder-${send.idempotencyKey}`
+
     try {
-      // List workflows with this event ID prefix
-      // Note: This requires Temporal Cloud or server-side workflow listing
-      // For now, we'll use a best-effort approach
-      const workflowIdPrefix = `reminder-${event.id}`
-      
-      // In a real implementation, you would:
-      // 1. Query Temporal for workflows matching the prefix
-      // 2. Send signal to each one
-      // For now, we'll just log this
-      console.log(`${enabled ? 'Resuming' : 'Pausing'} workflows for event ${event.id}`)
+      const handle = client.workflow.getHandle(workflowId)
+      await handle.signal(signalName)
       signaled++
-    } catch (error) {
-      console.error(`Failed to ${signal} workflow for event ${event.id}:`, error)
-      errors++
+    } catch (error: any) {
+      if (error?.name === 'WorkflowNotFoundError') {
+        console.info(`Workflow ${workflowId} not found (likely already completed)`)
+      } else {
+        console.error(`Failed to ${signalName} workflow ${workflowId}:`, error)
+        errors++
+      }
     }
   }
-  
-  console.log(`✅ Controlled ${signaled} workflows, ${errors} errors`)
+
+  console.log(`✅ ${enabled ? 'Resuming' : 'Pausing'} workflows: ${signaled} signaled, ${errors} errors`)
 }
 
 export async function createGroup(data: z.infer<typeof createGroupSchema>) {

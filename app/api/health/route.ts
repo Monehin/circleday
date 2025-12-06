@@ -1,16 +1,14 @@
 import { checkDatabaseConnection } from '@/lib/db'
 import { checkRateLimitConnection } from '@/lib/rate-limit/health'
-import { checkQStashConnection } from '@/lib/queue/health'
 
 export async function GET() {
   // Check all services
   const checks = await Promise.all([
     process.env.DATABASE_URL ? checkDatabaseConnection() : Promise.resolve(null),
     checkRateLimitConnection(),
-    checkQStashConnection(),
   ])
 
-  const [dbHealthy, rateLimitHealthy, queueHealthy] = checks
+  const [dbHealthy, rateLimitHealthy] = checks
   
   // System is healthy if database is healthy (critical service)
   const allHealthy = dbHealthy !== false
@@ -29,7 +27,6 @@ export async function GET() {
       services: {
         database: getServiceStatus(dbHealthy),
         rateLimit: getServiceStatus(rateLimitHealthy),
-        queue: getServiceStatus(queueHealthy),
       },
     },
     { status: allHealthy ? 200 : 503 }

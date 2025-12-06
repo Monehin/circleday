@@ -1,11 +1,22 @@
 import { db } from '@/lib/db'
-import { startOfDay, addYears, differenceInDays, addDays, format } from 'date-fns'
+import { addDays, addYears, format, startOfDay } from 'date-fns'
 import { ChannelType, SendStatus } from '@prisma/client'
 import { getTemporalClient } from '@/temporal/client'
 import type { ReminderInput } from '@/temporal/workflows/reminder.workflow'
+import { Temporal } from '@js-temporal/polyfill'
 
-// Toggle between QStash (legacy) and Temporal (new)
-const USE_TEMPORAL = process.env.USE_TEMPORAL === 'true'
+const LOOKAHEAD_DAYS = 30
+const DEFAULT_TIMEZONE = 'UTC'
+const USE_TEMPORAL =
+  process.env.USE_TEMPORAL === 'true' && process.env.NODE_ENV !== 'test'
+
+interface Recipient {
+  userId: string
+  email: string
+  phone: string | null
+  name: string
+  timezone: string
+}
 
 /**
  * Schedule a reminder using Temporal workflows
@@ -13,23 +24,23 @@ const USE_TEMPORAL = process.env.USE_TEMPORAL === 'true'
 async function scheduleReminderWithTemporal(params: {
   idempotencyKey: string
   event: any
-  nextOccurrence: Date
+  eventName: string
+  eventDate: Date
   offset: number
   channel: ChannelType
-  recipient: { userId: string; email: string; phone: string | null }
+  recipient: Recipient
   groupName: string
+  daysBeforeEvent: number
 }): Promise<void> {
-  const { idempotencyKey, event, nextOccurrence, offset, channel, recipient, groupName } = params
-  
-  const daysBeforeEvent = Math.abs(offset)
+  const { idempotencyKey, event, eventName, eventDate, offset, channel, recipient, groupName, daysBeforeEvent } = params
   
   // Prepare workflow input
   const input: ReminderInput = {
     eventId: event.id,
-    eventName: event.name,
-    eventDate: nextOccurrence,
+    eventName,
+    eventDate,
     recipientEmail: recipient.email,
-    recipientName: recipient.email.split('@')[0] || 'User', // Fallback name
+    recipientName: recipient.name,
     groupName,
     daysBeforeEvent,
     channels: [channel],
@@ -50,11 +61,9 @@ async function scheduleReminderWithTemporal(params: {
       taskQueue: 'circleday-tasks',
       workflowId,
       args: [input],
-      // Workflows are idempotent - starting the same workflowId is a no-op
     })
     console.log(`✅ Started Temporal workflow: ${workflowId}`)
   } catch (error: any) {
-    // WorkflowExecutionAlreadyStartedError is expected and fine (idempotency)
     if (error?.name === 'WorkflowExecutionAlreadyStartedError') {
       console.log(`ℹ️ Workflow already exists: ${workflowId}`)
     } else {
@@ -71,15 +80,32 @@ function calculateNextOccurrence(eventDate: Date, yearKnown: boolean): Date {
   const eventMonth = eventDate.getMonth()
   const eventDay = eventDate.getDate()
   
-  // Create date for this year
   let nextDate = new Date(today.getFullYear(), eventMonth, eventDay)
   
-  // If the date has passed this year, use next year
   if (nextDate < today) {
     nextDate = addYears(nextDate, 1)
   }
   
   return nextDate
+}
+
+/**
+ * Build a Date instance in UTC representing the chosen timezone + hour
+ */
+function buildZonedDate(date: Date, timezone: string, hour: number, dayOffset: number = 0): Date {
+  const zonedDate = Temporal.ZonedDateTime.from({
+    year: date.getFullYear(),
+    month: date.getMonth() + 1,
+    day: date.getDate(),
+    hour,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+    timeZone: timezone,
+    calendar: 'iso8601',
+  }).add({ days: dayOffset })
+
+  return new Date(zonedDate.toInstant().epochMilliseconds)
 }
 
 /**
@@ -90,10 +116,10 @@ function generateIdempotencyKey(
   targetDate: Date,
   offset: number,
   channel: ChannelType,
-  recipientEmail: string
+  recipientIdentifier: string
 ): string {
-  const datePart = format(targetDate, 'yyyy-MM-dd')
-  return `${eventId}-${datePart}-${offset}-${channel}-${recipientEmail}`
+  const datePart = format(targetDate, 'yyyyMMddHHmm')
+  return `${eventId}-${datePart}-${offset}-${channel}-${recipientIdentifier}`
 }
 
 /**
@@ -113,7 +139,7 @@ async function isSuppressed(identifier: string, channel: ChannelType): Promise<b
 
 /**
  * Schedule reminders for events in the next 30 days
- * This creates ScheduledSend records that will be processed by the sender
+ * This creates ScheduledSend records for analytics and starts Temporal workflows
  */
 export async function scheduleUpcomingReminders(): Promise<{
   scheduled: number
@@ -121,15 +147,13 @@ export async function scheduleUpcomingReminders(): Promise<{
   errors: number
 }> {
   const today = startOfDay(new Date())
-  const endDate = addDays(today, 30) // Look ahead 30 days
+  const deadline = addDays(today, LOOKAHEAD_DAYS)
   
   let scheduled = 0
   let skipped = 0
   let errors = 0
 
   try {
-    // Get all active reminder rules with their groups, events, and members
-    // Only process groups where reminders are enabled
     const rules = await db.reminderRule.findMany({
       where: {
         group: {
@@ -162,129 +186,132 @@ export async function scheduleUpcomingReminders(): Promise<{
       },
     })
 
-    // For each rule, check which events match the reminder offsets
+    const dedupedReminders = new Set<string>()
+
     for (const rule of rules) {
-      // Get all events from group members (filter out deleted events)
       const events = rule.group.memberships
         .flatMap(m => m.contact.events)
         .filter(e => !e.deletedAt)
 
       for (const event of events) {
-        // Calculate next occurrence for recurring events
-        const nextOccurrence = event.repeat 
+        const nextOccurrence = event.repeat
           ? calculateNextOccurrence(event.date, event.yearKnown)
           : event.date
 
-        // Only process events within our look-ahead window
-        if (nextOccurrence > endDate) continue
-
-        // Check if any of the rule's offsets match within our window
         for (const offset of rule.offsets) {
-          const sendDate = addDays(nextOccurrence, offset) // offset is negative, so this subtracts
-          
-          // Only schedule if send date is within our window
-          if (sendDate < today || sendDate > endDate) continue
-
-          // Get channels for this offset
           const channelsData = rule.channels as Record<string, string[]>
           const channels = channelsData?.[offset.toString()] || []
-
           if (channels.length === 0) continue
 
-          // Get recipients based on group type
-          let recipients: Array<{ userId: string; email: string; phone: string | null }> = []
+          const sendWindow = addDays(nextOccurrence, offset)
+          if (sendWindow < today || sendWindow > deadline) continue
 
+          const recipients: Recipient[] = []
           if (rule.group.type === 'PERSONAL') {
-            // PERSONAL: Only send to owner
             const ownerMembership = rule.group.memberships.find(
               m => m.userId === rule.group.ownerId && m.user
             )
             if (ownerMembership?.user) {
-              recipients = [{
+              recipients.push({
                 userId: ownerMembership.user.id,
                 email: ownerMembership.user.email,
                 phone: ownerMembership.user.phone,
-              }]
+                name: ownerMembership.user.name || ownerMembership.user.email || 'CircleDay member',
+                timezone: ownerMembership.user.defaultTimezone || rule.group.defaultTimezone || DEFAULT_TIMEZONE,
+              })
             }
-          } else if (rule.group.type === 'TEAM') {
-            // TEAM: Send to all members EXCEPT the person being celebrated
-            recipients = rule.group.memberships
-              .filter(m => 
-                m.user &&
-                m.contactId !== event.contactId // Exclude person being celebrated
-              )
-              .map(m => ({
-                userId: m.user!.id,
-                email: m.user!.email,
-                phone: m.user!.phone,
-              }))
+          } else {
+            for (const membership of rule.group.memberships) {
+              if (!membership.user) continue
+              if (membership.contactId === event.contactId) continue
+              recipients.push({
+                userId: membership.user.id,
+                email: membership.user.email,
+                phone: membership.user.phone,
+                name: membership.user.name || membership.user.email || 'CircleDay member',
+                timezone: membership.user.defaultTimezone || rule.group.defaultTimezone || DEFAULT_TIMEZONE,
+              })
+            }
           }
 
-          // Process each recipient
+          if (recipients.length === 0) continue
+
+          const eventContact = rule.group.memberships.find(m => m.contactId === event.contactId)?.contact
+          const eventDisplayName = event.title || `${eventContact?.name || 'Celebration'} ${event.type}`
+
           for (const recipient of recipients) {
-            // Process each channel (EMAIL, SMS)
             for (const channelStr of channels) {
               const channel = channelStr as ChannelType
-              
-              let recipientIdentifier: string | null = null
-              if (channel === 'EMAIL' && recipient.email) {
-                recipientIdentifier = recipient.email
-              } else if (channel === 'SMS' && recipient.phone) {
-                recipientIdentifier = recipient.phone
-              }
-              
+
+              const recipientIdentifier =
+                channel === 'EMAIL' ? recipient.email :
+                channel === 'SMS' ? recipient.phone :
+                null
+
               if (!recipientIdentifier) {
                 skipped++
                 continue
               }
-              
-              // Check suppression
+
               if (await isSuppressed(recipientIdentifier, channel)) {
                 skipped++
                 continue
               }
-              
-              // Generate idempotency key
+
+              const dueAtUtc = buildZonedDate(nextOccurrence, recipient.timezone, rule.sendHour, offset)
+              if (dueAtUtc < today || dueAtUtc > deadline) {
+                continue
+              }
+
               const idempotencyKey = generateIdempotencyKey(
                 event.id,
-                nextOccurrence,
+                dueAtUtc,
                 offset,
                 channel,
                 recipientIdentifier
               )
-              
+
+              if (dedupedReminders.has(idempotencyKey)) {
+                continue
+              }
+              dedupedReminders.add(idempotencyKey)
+
+              const eventDateForWorkflow = buildZonedDate(nextOccurrence, recipient.timezone, rule.sendHour)
+
               try {
                 if (USE_TEMPORAL) {
-                  // Use Temporal workflows for durable execution
                   await scheduleReminderWithTemporal({
                     idempotencyKey,
                     event,
-                    nextOccurrence,
+                    eventName: eventDisplayName,
+                    eventDate: eventDateForWorkflow,
                     offset,
                     channel,
                     recipient,
                     groupName: rule.group.name,
-                  })
-                } else {
-                  // Legacy: Use ScheduledSend records
-                  await db.scheduledSend.upsert({
-                    where: { idempotencyKey },
-                    create: {
-                      eventId: event.id,
-                      recipientUserId: recipient.userId,
-                      targetDate: nextOccurrence,
-                      offset,
-                      channel,
-                      dueAtUtc: sendDate,
-                      status: 'PENDING',
-                      idempotencyKey,
-                    },
-                    update: {
-                      dueAtUtc: sendDate,
-                      recipientUserId: recipient.userId,
-                    },
+                    daysBeforeEvent: Math.abs(offset),
                   })
                 }
+
+                await db.scheduledSend.upsert({
+                  where: { idempotencyKey },
+                  create: {
+                    eventId: event.id,
+                    recipientUserId: recipient.userId,
+                    targetDate: nextOccurrence,
+                    offset,
+                    channel,
+                    dueAtUtc,
+                    status: 'PENDING',
+                    idempotencyKey,
+                  },
+                  update: {
+                    dueAtUtc,
+                    recipientUserId: recipient.userId,
+                    offset,
+                  },
+                })
+
                 scheduled++
               } catch (error) {
                 console.error('Failed to schedule reminder:', error)

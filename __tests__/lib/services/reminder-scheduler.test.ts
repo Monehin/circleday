@@ -8,7 +8,14 @@ import {
 } from '@/lib/services/reminder-scheduler'
 import { addDays, startOfDay } from 'date-fns'
 
-// Mock the database
+vi.mock('@/temporal/client', () => ({
+  getTemporalClient: vi.fn().mockResolvedValue({
+    workflow: {
+      start: vi.fn(),
+    },
+  }),
+}))
+
 vi.mock('@/lib/db', () => ({
   db: {
     reminderRule: {

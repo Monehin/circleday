@@ -78,7 +78,6 @@ export async function withRateLimit<T>(
 
 // Get client IP from request
 export function getClientIp(request: Request): string {
-  // Check various headers for IP (Vercel, Cloudflare, etc.)
   const forwarded = request.headers.get('x-forwarded-for')
   const realIp = request.headers.get('x-real-ip')
   const cfConnectingIp = request.headers.get('cf-connecting-ip')

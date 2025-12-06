@@ -7,6 +7,14 @@ interface ReminderStatsCardsProps {
 
 export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
   const result = await getReminderStats(groupId)
+  const reconciliationUrl = new URL(
+    '/api/metrics/reminders/reconciliation',
+    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+  )
+  const reconciliationResponse = await fetch(reconciliationUrl, {
+    cache: 'no-store',
+  })
+  const reconciliationJson = await reconciliationResponse.json()
 
   if (!result.success || !result.stats) {
     return (
@@ -17,6 +25,20 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
   }
 
   const { stats } = result
+  const discrepancyCount =
+    reconciliationJson?.success && Array.isArray(reconciliationJson.discrepancies)
+      ? reconciliationJson.discrepancies.length
+      : 0
+  const reconciliationDescription =
+    discrepancyCount > 0
+      ? `${discrepancyCount} issues in last ${Math.round((Math.abs(
+          new Date(reconciliationJson.windowEnd).getTime() -
+            new Date(reconciliationJson.windowStart).getTime()
+        ) /
+          1000 /
+          60 /
+          60) || 24)}h`
+      : 'All workflows healthy'
 
   const statCards = [
     {
@@ -42,6 +64,12 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
       value: `${stats.successRate}%`,
       icon: '📊',
       description: 'Delivery success rate',
+    },
+    {
+      label: 'Temporal Reconciliation',
+      value: discrepancyCount,
+      icon: discrepancyCount ? '⚠️' : '✅',
+      description: reconciliationDescription,
     },
   ]
 

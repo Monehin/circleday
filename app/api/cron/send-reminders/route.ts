@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { processRemindersForToday } from '@/lib/services/reminder-sender'
 import { scheduleUpcomingReminders } from '@/lib/services/reminder-scheduler'
 
 /**
@@ -12,10 +11,9 @@ import { scheduleUpcomingReminders } from '@/lib/services/reminder-scheduler'
  * 2. Process pending reminders for today (sends emails/SMS)
  * 
  * Security: In production, this should be secured with:
- * - QStash signature verification, or
  * - A secret token in the Authorization header
  * 
- * Example QStash schedule:
+ * Example cron schedule:
  * - URL: https://your-domain.com/api/cron/send-reminders
  * - Schedule: 0 9 * * * (every day at 9 AM UTC)
  */
@@ -43,32 +41,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('🚀 Starting daily reminder processing...')
+    console.log('🚀 Starting daily reminder scheduling...')
 
-    // Phase 1: Schedule upcoming reminders (30-day look-ahead)
-    console.log('📅 Phase 1: Scheduling upcoming reminders...')
+    console.log('📅 Scheduling upcoming reminders...')
     const scheduleResult = await scheduleUpcomingReminders()
     console.log(`✅ Scheduled ${scheduleResult.scheduled} reminders (${scheduleResult.skipped} skipped, ${scheduleResult.errors} errors)`)
 
-    // Phase 2: Process pending reminders for today
-    console.log('📧 Phase 2: Processing reminders for today...')
-    const sendResult = await processRemindersForToday()
-    console.log(`✅ Sent ${sendResult.sent} reminders (${sendResult.failed} failed)`)
-
     return NextResponse.json({
       success: true,
-      message: 'Reminders processed successfully',
+      message: 'Reminders scheduled successfully',
       scheduling: {
         scheduled: scheduleResult.scheduled,
         skipped: scheduleResult.skipped,
         errors: scheduleResult.errors,
       },
-      sending: {
-        total: sendResult.total,
-        sent: sendResult.sent,
-        failed: sendResult.failed,
-      },
-      errors: sendResult.errors.length > 0 ? sendResult.errors : undefined,
     })
   } catch (error) {
     console.error('Failed to process reminders:', error)
@@ -96,28 +82,17 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Phase 1: Schedule upcoming reminders
-    console.log('📅 Phase 1: Scheduling upcoming reminders...')
+    console.log('📅 Scheduling upcoming reminders (dev mode)...')
     const scheduleResult = await scheduleUpcomingReminders()
-
-    // Phase 2: Process pending reminders for today
-    console.log('📧 Phase 2: Processing reminders for today...')
-    const sendResult = await processRemindersForToday()
 
     return NextResponse.json({
       success: true,
-      message: 'Reminders processed successfully (dev mode)',
+      message: 'Reminders scheduled successfully (dev mode)',
       scheduling: {
         scheduled: scheduleResult.scheduled,
         skipped: scheduleResult.skipped,
         errors: scheduleResult.errors,
       },
-      sending: {
-        total: sendResult.total,
-        sent: sendResult.sent,
-        failed: sendResult.failed,
-      },
-      errors: sendResult.errors.length > 0 ? sendResult.errors : undefined,
     })
   } catch (error) {
     console.error('Failed to process reminders:', error)

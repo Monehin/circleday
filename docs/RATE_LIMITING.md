@@ -6,34 +6,19 @@ CircleDay uses Upstash Rate Limit for protecting endpoints from abuse.
 
 ## Configuration
 
-Rate limits are defined in `lib/rate-limit/config.ts`:
+Rate limits are defined in `lib/rate-limit/index.ts` using sliding windows backed by Upstash Redis:
 
 ```typescript
-RATE_LIMITS = {
-  auth: {
-    login: 5 requests/minute per IP
-    magicLink: 3 requests/15min per email
-    smsOtp: 5 requests/hour per phone
-  },
-  api: {
-    authenticated: 100 requests/minute per user
-    unauthenticated: 20 requests/minute per IP
-  },
-  public: {
-    wishWall: 10 posts/minute per IP
-    giftPage: 30 views/minute per IP
-  },
-  webhooks: {
-    stripe/twilio/resend: 1000 requests/minute
-  }
-}
+// Example defaults inside the helper
+const limit = 100
+const windowSeconds = 60
 ```
 
 ## Setup
 
 ### 1. Create Upstash Account
 
-1. Go to https://upstash.com
+1. Go to <https://upstash.com>
 2. Sign up / Log in
 3. Create Redis database:
    - Name: `circleday-ratelimit`
@@ -43,6 +28,7 @@ RATE_LIMITS = {
 ### 2. Get Credentials
 
 Copy from Upstash dashboard:
+
 - REST URL
 - REST TOKEN
 
@@ -65,7 +51,7 @@ export async function POST(request: Request) {
   const ip = getClientIp(request)
   
   // Check rate limit
-  await checkRateLimit(ip, 'api', 'unauthenticated')
+  await checkRateLimit(ip, 100, 60)
   
   // Continue with request handling...
 }
@@ -77,7 +63,7 @@ export async function POST(request: Request) {
 import { withRateLimit } from '@/lib/rate-limit'
 
 export async function loginAction(email: string) {
-  return withRateLimit(email, 'auth', 'login', async () => {
+  return withRateLimit(email, 5, 60, async () => {
     // Your logic here
     return { success: true }
   })
@@ -101,6 +87,7 @@ Rate limit configuration is tested in `__tests__/unit/lib/rate-limit.test.ts`
 ## Error Handling
 
 When rate limit is exceeded:
+
 - HTTP Status: 429 (Too Many Requests)
 - Error Code: RATE_LIMIT_EXCEEDED
 - Message includes reset time
@@ -117,5 +104,3 @@ When rate limit is exceeded:
 ## Monitoring
 
 Rate limit analytics are enabled and can be viewed in Upstash dashboard.
-
-
