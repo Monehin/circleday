@@ -1,3 +1,4 @@
+import { addDays } from 'date-fns'
 import { db } from '@/lib/db'
 import { ensureGroupAccess } from '@/lib/actions/group-access'
 import { reconcileScheduledSends } from '@/lib/services/reminder-reconciliation'
@@ -5,25 +6,29 @@ import { reconcileScheduledSends } from '@/lib/services/reminder-reconciliation'
 type HealthResponse =
   | {
       success: true
-      health: {
-        remindersEnabled: boolean
-        scheduledCounts: {
-          total: number
-          pending: number
-          queued: number
-          failed: number
-        }
-        latestScheduledSend: {
-          dueAtUtc: Date
-          status: string
-        } | null
-        reconciliation: {
-          windowStart: Date
-          windowEnd: Date
-          discrepancyCount: number
-          discrepancies: { scheduledSendId: string; details: string; type: string }[]
-        }
+    health: {
+      remindersEnabled: boolean
+      scheduledCounts: {
+        total: number
+        pending: number
+        queued: number
+        failed: number
       }
+      latestScheduledSend: {
+        dueAtUtc: Date
+        status: string
+      } | null
+      reconciliation: {
+        windowStart: Date
+        windowEnd: Date
+        discrepancyCount: number
+        discrepancies: { scheduledSendId: string; details: string; type: string }[]
+      }
+      engagement?: {
+        since: Date
+        counts: Record<string, number>
+      }
+    }
     }
   | {
       success: false
@@ -86,6 +91,35 @@ export async function getGroupReminderHealth(groupId: string): Promise<HealthRes
     windowHours: 24,
     limit: 50,
   })
+  const pastWeek = addDays(new Date(), -7)
+
+  const engagementGroups = await db.sendLog.groupBy({
+    by: ['status'],
+    where: {
+      scheduledSend: {
+        event: {
+          contact: {
+            memberships: {
+              some: {
+                groupId,
+              },
+            },
+          },
+        },
+      },
+      createdAt: {
+        gte: pastWeek,
+      },
+    },
+    _count: {
+      id: true,
+    },
+  })
+
+  const engagementCounts: Record<string, number> = {}
+  engagementGroups.forEach(group => {
+    engagementCounts[group.status] = group._count.id
+  })
 
   return {
     success: true,
@@ -107,6 +141,10 @@ export async function getGroupReminderHealth(groupId: string): Promise<HealthRes
           details: d.details,
           type: d.type,
         })),
+      },
+      engagement: {
+        since: pastWeek,
+        counts: engagementCounts,
       },
     },
   }

@@ -94,6 +94,18 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
       description: healthDescription,
     },
     {
+      label: 'Engagement (7d)',
+      value: healthResult.success
+        ? `${healthResult.health.engagement?.counts['SENT'] || 0}✅ / ${
+            healthResult.health.engagement?.counts['FAILED'] || 0
+          }⚠️`
+        : 'N/A',
+      icon: '👋',
+      description: healthResult.success
+        ? `Since ${format(new Date(healthResult.health.engagement?.since || Date.now()), 'Pp')}`
+        : healthResult.error,
+    },
+    {
       label: 'Temporal Reconciliation',
       value: discrepancyCount,
       icon: discrepancyCount ? '⚠️' : '✅',
