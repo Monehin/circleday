@@ -189,135 +189,168 @@ export async function scheduleUpcomingReminders(): Promise<{
     const dedupedReminders = new Set<string>()
 
     for (const rule of rules) {
-      const events = rule.group.memberships
-        .flatMap(m => m.contact.events)
-        .filter(e => !e.deletedAt)
-
-      for (const event of events) {
-        const nextOccurrence = event.repeat
-          ? calculateNextOccurrence(event.date, event.yearKnown)
-          : event.date
-
-        for (const offset of rule.offsets) {
-          const channelsData = rule.channels as Record<string, string[]>
-          const channels = channelsData?.[offset.toString()] || []
-          if (channels.length === 0) continue
-
-          const sendWindow = addDays(nextOccurrence, offset)
-          if (sendWindow < today || sendWindow > deadline) continue
-
-          const recipients: Recipient[] = []
-          if (rule.group.type === 'PERSONAL') {
-            const ownerMembership = rule.group.memberships.find(
-              m => m.userId === rule.group.ownerId && m.user
-            )
-            if (ownerMembership?.user) {
-              recipients.push({
-                userId: ownerMembership.user.id,
-                email: ownerMembership.user.email,
-                phone: ownerMembership.user.phone,
-                name: ownerMembership.user.name || ownerMembership.user.email || 'CircleDay member',
-                timezone: ownerMembership.user.defaultTimezone || rule.group.defaultTimezone || DEFAULT_TIMEZONE,
-              })
-            }
-          } else {
-            for (const membership of rule.group.memberships) {
-              if (!membership.user) continue
-              if (membership.contactId === event.contactId) continue
-              recipients.push({
-                userId: membership.user.id,
-                email: membership.user.email,
-                phone: membership.user.phone,
-                name: membership.user.name || membership.user.email || 'CircleDay member',
-                timezone: membership.user.defaultTimezone || rule.group.defaultTimezone || DEFAULT_TIMEZONE,
-              })
-            }
+      const ownerMembership = rule.group.memberships.find(
+        m => m.userId === rule.group.ownerId && m.user
+      )
+      const ownerRecipient = ownerMembership?.user
+        ? {
+            userId: ownerMembership.user.id,
+            email: ownerMembership.user.email,
+            phone: ownerMembership.user.phone,
+            name: ownerMembership.user.name || ownerMembership.user.email || 'CircleDay member',
+            timezone: ownerMembership.user.defaultTimezone || rule.group.defaultTimezone || DEFAULT_TIMEZONE,
           }
+        : null
 
-          if (recipients.length === 0) continue
+      const contactEventsMap = new Map<
+        string,
+        { contact: typeof rule.group.memberships[number]['contact']; events: typeof rule.group.memberships[number]['contact']['events'] }
+      >()
 
-          const eventContact = rule.group.memberships.find(m => m.contactId === event.contactId)?.contact
-          const eventDisplayName = event.title || `${eventContact?.name || 'Celebration'} ${event.type}`
+      for (const membership of rule.group.memberships) {
+        const contact = membership.contact
+        if (!contact) continue
+        if (!contactEventsMap.has(contact.id)) {
+          const events = (contact.events || []).filter(e => !e.deletedAt)
+          contactEventsMap.set(contact.id, { contact, events })
+        }
+      }
 
-          for (const recipient of recipients) {
-            for (const channelStr of channels) {
-              const channel = channelStr as ChannelType
+      const recipientsCache = new Map<string, Recipient[]>()
+      const getRecipientsForContact = (contactId: string) => {
+        if (recipientsCache.has(contactId)) {
+          return recipientsCache.get(contactId)!
+        }
 
-              const recipientIdentifier =
-                channel === 'EMAIL' ? recipient.email :
-                channel === 'SMS' ? recipient.phone :
-                null
+        let recipients: Recipient[] = []
 
-              if (!recipientIdentifier) {
-                skipped++
-                continue
-              }
+        if (rule.group.type === 'PERSONAL') {
+          if (ownerRecipient) {
+            recipients = [ownerRecipient]
+          }
+        } else {
+          const seenUserIds = new Set<string>()
+          for (const membership of rule.group.memberships) {
+            if (!membership.user) continue
+            if (membership.contactId === contactId) continue
+            if (seenUserIds.has(membership.user.id)) continue
+            seenUserIds.add(membership.user.id)
+            recipients.push({
+              userId: membership.user.id,
+              email: membership.user.email,
+              phone: membership.user.phone,
+              name: membership.user.name || membership.user.email || 'CircleDay member',
+              timezone:
+                membership.user.defaultTimezone ||
+                rule.group.defaultTimezone ||
+                DEFAULT_TIMEZONE,
+            })
+          }
+        }
 
-              if (await isSuppressed(recipientIdentifier, channel)) {
-                skipped++
-                continue
-              }
+        recipientsCache.set(contactId, recipients)
+        return recipients
+      }
 
-              const dueAtUtc = buildZonedDate(nextOccurrence, recipient.timezone, rule.sendHour, offset)
-              if (dueAtUtc < today || dueAtUtc > deadline) {
-                continue
-              }
+      for (const { contact, events } of contactEventsMap.values()) {
+        for (const event of events) {
+          const nextOccurrence = event.repeat
+            ? calculateNextOccurrence(event.date, event.yearKnown)
+            : event.date
 
-              const idempotencyKey = generateIdempotencyKey(
-                event.id,
-                dueAtUtc,
-                offset,
-                channel,
-                recipientIdentifier
-              )
+          for (const offset of rule.offsets) {
+            const channelsData = rule.channels as Record<string, string[]>
+            const channels = channelsData?.[offset.toString()] || []
+            if (channels.length === 0) continue
 
-              if (dedupedReminders.has(idempotencyKey)) {
-                continue
-              }
-              dedupedReminders.add(idempotencyKey)
+            const sendWindow = addDays(nextOccurrence, offset)
+            if (sendWindow < today || sendWindow > deadline) continue
 
-              const eventDateForWorkflow = buildZonedDate(nextOccurrence, recipient.timezone, rule.sendHour)
+            const recipients = getRecipientsForContact(contact.id)
+            if (recipients.length === 0) continue
 
-              try {
-                if (USE_TEMPORAL) {
-                  await scheduleReminderWithTemporal({
-                    idempotencyKey,
-                    event,
-                    eventName: eventDisplayName,
-                    eventDate: eventDateForWorkflow,
-                    offset,
-                    channel,
-                    recipient,
-                    groupName: rule.group.name,
-                    daysBeforeEvent: Math.abs(offset),
-                  })
+            const eventDisplayName = event.title || `${contact.name || 'Celebration'} ${event.type}`
+
+            for (const recipient of recipients) {
+              for (const channelStr of channels) {
+                const channel = channelStr as ChannelType
+
+                const recipientIdentifier =
+                  channel === 'EMAIL' ? recipient.email :
+                  channel === 'SMS' ? recipient.phone :
+                  null
+
+                if (!recipientIdentifier) {
+                  skipped++
+                  continue
                 }
 
+                if (await isSuppressed(recipientIdentifier, channel)) {
+                  skipped++
+                  continue
+                }
+
+                const dueAtUtc = buildZonedDate(nextOccurrence, recipient.timezone, rule.sendHour, offset)
+                if (dueAtUtc < today || dueAtUtc > deadline) {
+                  continue
+                }
+
+                const idempotencyKey = generateIdempotencyKey(
+                  event.id,
+                  dueAtUtc,
+                  offset,
+                  channel,
+                  recipientIdentifier
+                )
+
+                if (dedupedReminders.has(idempotencyKey)) {
+                  continue
+                }
+                dedupedReminders.add(idempotencyKey)
+
+                const eventDateForWorkflow = buildZonedDate(nextOccurrence, recipient.timezone, rule.sendHour)
+
+                try {
+                  if (USE_TEMPORAL) {
+                    await scheduleReminderWithTemporal({
+                      idempotencyKey,
+                      event,
+                      eventName: eventDisplayName,
+                      eventDate: eventDateForWorkflow,
+                      offset,
+                      channel,
+                      recipient,
+                      groupName: rule.group.name,
+                      daysBeforeEvent: Math.abs(offset),
+                    })
+                  }
+
                   await db.scheduledSend.upsert({
-                  where: { idempotencyKey },
-                  create: {
-                    eventId: event.id,
-                    recipientUserId: recipient.userId,
+                    where: { idempotencyKey },
+                    create: {
+                      eventId: event.id,
+                      recipientUserId: recipient.userId,
                       recipientGroupName: rule.group.name,
                       recipientTimezone: recipient.timezone,
-                    targetDate: nextOccurrence,
-                    offset,
-                    channel,
-                    dueAtUtc,
-                    status: 'PENDING',
-                    idempotencyKey,
-                  },
-                  update: {
-                    dueAtUtc,
-                    recipientUserId: recipient.userId,
-                    offset,
-                  },
-                })
+                      targetDate: nextOccurrence,
+                      offset,
+                      channel,
+                      dueAtUtc,
+                      status: 'PENDING',
+                      idempotencyKey,
+                    },
+                    update: {
+                      dueAtUtc,
+                      recipientUserId: recipient.userId,
+                      offset,
+                    },
+                  })
 
-                scheduled++
-              } catch (error) {
-                console.error('Failed to schedule reminder:', error)
-                errors++
+                  scheduled++
+                } catch (error) {
+                  console.error('Failed to schedule reminder:', error)
+                  errors++
+                }
               }
             }
           }
