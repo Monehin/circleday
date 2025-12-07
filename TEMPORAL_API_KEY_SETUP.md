@@ -80,8 +80,8 @@ Add to your `.env.local`:
 
 ```bash
 TEMPORAL_CLOUD_ENABLED=true
-TEMPORAL_ADDRESS=circleday-prod.abc123.tmprl.cloud:7233
-TEMPORAL_NAMESPACE=circleday-prod
+TEMPORAL_ADDRESS=your-namespace.account.tmprl.cloud:7233
+TEMPORAL_NAMESPACE=name-prod
 TEMPORAL_API_KEY=tmprl-your-key-here
 ```
 

@@ -180,8 +180,8 @@ NODE_ENV=production
 
 # Temporal Cloud
 TEMPORAL_CLOUD_ENABLED=true
-TEMPORAL_ADDRESS=circleday-prod.abc123.tmprl.cloud:7233
-TEMPORAL_NAMESPACE=circleday-prod
+TEMPORAL_ADDRESS=your-namespace.account.tmprl.cloud:7233
+TEMPORAL_NAMESPACE=name-prod
 TEMPORAL_API_KEY=tmprl-your-api-key-here
 
 # Database
