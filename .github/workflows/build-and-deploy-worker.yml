@@ -6,10 +6,14 @@ on:
     paths:
       - 'temporal/**'
       - 'scripts/temporal-worker.ts'
-      - 'lib/**'
+      - 'lib/**'               # shared code consumed by activities/workflows
+      - 'prisma/**'            # schema/migrations used by worker-side DB access
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
       - 'Dockerfile.worker'
       - 'docker-compose.yml'
-      - 'prisma/**'
+      - '.github/workflows/build-and-deploy-worker.yml'
   workflow_dispatch:
 
 concurrency:
