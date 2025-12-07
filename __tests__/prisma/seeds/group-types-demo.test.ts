@@ -12,7 +12,7 @@ describe('generateDailyQaEvents', () => {
     expect(events).toHaveLength(7)
     events.forEach((evt, idx) => {
       const expectedDate = addDays(today, idx + 1)
-      expect(evt.contactId).toBe(contacts[idx].id)
+      expect(evt.contactId).toBe(contacts[idx]!.id)
       expect(evt.title).toBe(`QA Daily Check ${idx + 1}`)
       expect(evt.date.getFullYear()).toBe(expectedDate.getFullYear())
       expect(evt.date.getMonth()).toBe(expectedDate.getMonth())
@@ -27,8 +27,8 @@ describe('generateDailyQaEvents', () => {
     const events = generateDailyQaEvents(contacts, today)
 
     expect(events).toHaveLength(2)
-    expect(events[0].contactId).toBe('c-1')
-    expect(events[1].contactId).toBe('c-3')
+    expect(events[0]!.contactId).toBe('c-1')
+    expect(events[1]!.contactId).toBe('c-3')
   })
 })
 

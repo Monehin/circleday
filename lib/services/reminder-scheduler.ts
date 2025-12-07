@@ -31,7 +31,7 @@ async function scheduleReminderWithTemporal(params: {
   recipient: Recipient
   groupName: string
   daysBeforeEvent: number
-}): Promise<void> {
+}): Promise<'started' | 'exists'> {
   const { idempotencyKey, event, eventName, eventDate, offset, channel, recipient, groupName, daysBeforeEvent } = params
   
   // Prepare workflow input
@@ -63,9 +63,11 @@ async function scheduleReminderWithTemporal(params: {
       args: [input],
     })
     console.log(`✅ Started Temporal workflow: ${workflowId}`)
+    return 'started'
   } catch (error: any) {
     if (error?.name === 'WorkflowExecutionAlreadyStartedError') {
       console.log(`ℹ️ Workflow already exists: ${workflowId}`)
+      return 'exists'
     } else {
       throw error
     }
@@ -152,8 +154,36 @@ export async function scheduleUpcomingReminders(): Promise<{
   let scheduled = 0
   let skipped = 0
   let errors = 0
+  let preflightExisting = 0
+  let alreadyExistingDuringRun = 0
 
   try {
+    if (USE_TEMPORAL) {
+      try {
+        const client = await getTemporalClient()
+        const iter = client.workflow.list({ query: 'WorkflowType="reminderWorkflow"' })
+        for await (const wf of iter) {
+          const id =
+            // Temporal list response shape
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (wf as any)?.execution?.workflowId ||
+            // Fallbacks for test shapes
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (wf as any)?.workflowId ||
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (wf as any)?.id
+          if (id && typeof id === 'string' && id.startsWith('reminder-')) {
+            preflightExisting++
+          }
+        }
+        console.log(
+          `ℹ️ Preflight: found ${preflightExisting} existing reminder workflows before scheduling`
+        )
+      } catch (preflightError) {
+        console.error('⚠️ Preflight existing workflow count failed:', preflightError)
+      }
+    }
+
     const rules = await db.reminderRule.findMany({
       where: {
         group: {
@@ -312,7 +342,7 @@ export async function scheduleUpcomingReminders(): Promise<{
 
                 try {
                   if (USE_TEMPORAL) {
-                    await scheduleReminderWithTemporal({
+                    const startResult = await scheduleReminderWithTemporal({
                       idempotencyKey,
                       event,
                       eventName: eventDisplayName,
@@ -323,6 +353,10 @@ export async function scheduleUpcomingReminders(): Promise<{
                       groupName: rule.group.name,
                       daysBeforeEvent: Math.abs(offset),
                     })
+
+                    if (startResult === 'exists') {
+                      alreadyExistingDuringRun++
+                    }
                   }
 
                   await db.scheduledSend.upsert({
@@ -356,6 +390,12 @@ export async function scheduleUpcomingReminders(): Promise<{
           }
         }
       }
+    }
+
+    if (USE_TEMPORAL) {
+      console.log(
+        `ℹ️ Existing workflow summary: preflight=${preflightExisting}, encounteredDuringRun=${alreadyExistingDuringRun}`
+      )
     }
 
     return { scheduled, skipped, errors }

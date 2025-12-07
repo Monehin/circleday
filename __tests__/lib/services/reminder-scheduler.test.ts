@@ -8,7 +8,6 @@ import {
 } from '@/lib/services/reminder-scheduler'
 import { addDays, startOfDay } from 'date-fns'
 import { Temporal } from '@js-temporal/polyfill'
-import { Temporal } from '@js-temporal/polyfill'
 
 vi.mock('@/temporal/client', () => ({
   getTemporalClient: vi.fn().mockResolvedValue({
@@ -229,8 +228,9 @@ describe('Reminder Scheduler', () => {
 
     await scheduleUpcomingReminders()
 
-    const upsertArg = vi.mocked(db.scheduledSend.upsert).mock.calls[0][0]
-    const createCall = upsertArg.create
+    const upsertArg = vi.mocked(db.scheduledSend.upsert).mock.calls[0]?.[0]
+    expect(upsertArg).toBeDefined()
+    const createCall = upsertArg!.create
     const expectedDueAt = Temporal.ZonedDateTime.from({
       year: futureDate.getFullYear(),
       month: futureDate.getMonth() + 1,
@@ -245,7 +245,8 @@ describe('Reminder Scheduler', () => {
       .add({ days: offset })
       .toInstant().epochMilliseconds
 
-    expect(createCall.dueAtUtc.getTime()).toBe(expectedDueAt)
+    const dueAt = new Date(createCall.dueAtUtc as Date)
+    expect(dueAt.getTime()).toBe(expectedDueAt)
   })
 
     it('should skip suppressed recipients', async () => {
@@ -733,8 +734,9 @@ describe('Reminder Scheduler', () => {
 
     await scheduleUpcomingReminders()
 
-    const upsertArg = vi.mocked(db.scheduledSend.upsert).mock.calls[0][0]
-    const dueAt = upsertArg.create.dueAtUtc
+    const upsertArg = vi.mocked(db.scheduledSend.upsert).mock.calls[0]?.[0]
+    expect(upsertArg).toBeDefined()
+    const dueAt = upsertArg!.create.dueAtUtc
     const zoned = Temporal.ZonedDateTime.from({
       year: futureDate.getFullYear(),
       month: futureDate.getMonth() + 1,
@@ -748,7 +750,8 @@ describe('Reminder Scheduler', () => {
     })
     const expected = new Date(zoned.toInstant().epochMilliseconds)
 
-    expect(dueAt?.getTime()).toBe(expected.getTime())
+    const dueAtDate = dueAt ? new Date(dueAt as Date) : undefined
+    expect(dueAtDate?.getTime()).toBe(expected.getTime())
   })
 })
 
