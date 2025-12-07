@@ -1091,12 +1091,19 @@ async function main() {
   console.log(`   npx tsx -e "import('./lib/services/reminder-scheduler').then(m => m.scheduleUpcomingReminders())"\n`)
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ Seed failed:', e)
-    process.exit(1)
-  })
-  .finally(async () => {
-    await db.$disconnect()
-  })
+export async function runSeed() {
+  await main()
+}
+
+// Only execute automatically when not under Vitest/test runner
+if (!process.env.VITEST_WORKER_ID) {
+  runSeed()
+    .catch((e) => {
+      console.error('❌ Seed failed:', e)
+      process.exit(1)
+    })
+    .finally(async () => {
+      await db.$disconnect()
+    })
+}
 
