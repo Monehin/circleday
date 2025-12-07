@@ -49,6 +49,7 @@ export default function GroupRemindersPage() {
   const [isTogglingReminders, setIsTogglingReminders] = useState(false)
   const [health, setHealth] = useState<any>(null)
   const [healthLoading, setHealthLoading] = useState(false)
+  const [healthError, setHealthError] = useState<string | null>(null)
   const [inviteAnalytics, setInviteAnalytics] = useState<any>(null)
   const [inviteLoading, setInviteLoading] = useState(false)
 
@@ -65,18 +66,19 @@ export default function GroupRemindersPage() {
   }, [session, groupId])
 
   useEffect(() => {
-    if (groupId) {
+    if (groupId && session) {
       loadHealth()
       loadInviteAnalytics()
     }
-  }, [groupId])
+  }, [groupId, session])
 
   const loadInviteAnalytics = async () => {
     setInviteLoading(true)
     try {
-      const response = await fetch(`/api/groups/${groupId}/invites/analytics`, {
-        cache: 'no-store',
-      })
+    const response = await fetch(`/api/groups/${groupId}/invites/analytics`, {
+      cache: 'no-store',
+      credentials: 'include',
+    })
       if (!response.ok) {
         throw new Error('Failed to load invite analytics')
       }
@@ -118,17 +120,23 @@ export default function GroupRemindersPage() {
 
   const loadHealth = async () => {
     setHealthLoading(true)
+    setHealthError(null)
     try {
       const response = await fetch(`/api/groups/${groupId}/health`, {
         cache: 'no-store',
+        credentials: 'include',
       })
       if (!response.ok) {
-        throw new Error('Failed to load reliability metrics')
+        const text = await response.text()
+        console.error('Failed to load reliability metrics', response.status, text)
+        setHealthError(`Load failed (${response.status})`)
+        return
       }
       const data = await response.json()
       setHealth(data)
     } catch (error) {
       console.error('Failed to load reliability health:', error)
+      setHealthError('Failed to load reliability metrics')
     } finally {
       setHealthLoading(false)
     }

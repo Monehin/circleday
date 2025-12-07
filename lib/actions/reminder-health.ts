@@ -40,8 +40,11 @@ type HealthResponse =
       error: string
     }
 
-export async function getGroupReminderHealth(groupId: string): Promise<HealthResponse> {
-  const access = await ensureGroupAccess(groupId)
+export async function getGroupReminderHealth(
+  groupId: string,
+  incomingHeaders?: Headers
+): Promise<HealthResponse> {
+  const access = await ensureGroupAccess(groupId, incomingHeaders)
 
   if (!access.success) {
     return { success: false, error: access.error }

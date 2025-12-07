@@ -15,9 +15,14 @@ type GroupAccessFailure = {
 
 export type GroupAccessResult = GroupAccessSuccess | GroupAccessFailure
 
-export async function ensureGroupAccess(groupId: string): Promise<GroupAccessResult> {
+export async function ensureGroupAccess(
+  groupId: string,
+  incomingHeaders?: Headers
+): Promise<GroupAccessResult> {
+  const headerSource = incomingHeaders ?? (await headers())
+
   const session = await auth.api.getSession({
-    headers: await headers(),
+    headers: headerSource,
   })
 
   if (!session) {
