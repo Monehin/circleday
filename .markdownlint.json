@@ -9,6 +9,15 @@
         "MD022": false
       }
     }
+    ,
+    {
+      "files": ["docs/**/*.md"],
+      "rules": {
+        "MD013": false,
+        "MD009": false,
+        "MD012": false
+      }
+    }
   ]
 }
 

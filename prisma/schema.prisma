@@ -253,6 +253,8 @@ model ScheduledSend {
   id              String      @id @default(cuid())
   eventId         String
   recipientUserId String      // Track who should receive this reminder
+  recipientGroupName String?  // Snapshot of the group name at schedule time
+  recipientTimezone String?   // Snapshot of the recipient's timezone
   targetDate      DateTime    // The actual event date (YYYY-MM-DD)
   offset          Int         // -7, -1, 0
   channel         ChannelType

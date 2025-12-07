@@ -7,6 +7,8 @@ import {
   getSchedulerStats,
 } from '@/lib/services/reminder-scheduler'
 import { addDays, startOfDay } from 'date-fns'
+import { Temporal } from '@js-temporal/polyfill'
+import { Temporal } from '@js-temporal/polyfill'
 
 vi.mock('@/temporal/client', () => ({
   getTemporalClient: vi.fn().mockResolvedValue({
@@ -136,6 +138,115 @@ describe('Reminder Scheduler', () => {
       expect(result.errors).toBe(0)
       expect(db.scheduledSend.upsert).toHaveBeenCalled()
     })
+
+  it('respects recipient timezone and configured send hour', async () => {
+    const today = startOfDay(new Date())
+    const futureDate = addDays(today, 2)
+    const timezone = 'America/New_York'
+    const offset = -1
+    vi.mocked(db.reminderRule.findMany).mockResolvedValue([
+      {
+        id: 'rule-1',
+        groupId: 'group-1',
+        offsets: [-1],
+        channels: { '-1': ['EMAIL'] },
+        sendHour: 9,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        group: {
+          id: 'group-1',
+          name: 'Test Group',
+          type: 'PERSONAL' as const,
+          ownerId: 'user-1',
+          defaultTimezone: 'UTC',
+          quietHours: null,
+          leapDayPolicy: 'FEB_28',
+          maxEventsPerMember: null,
+          remindersEnabled: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          memberships: [
+            {
+              id: 'membership-1',
+              groupId: 'group-1',
+              userId: 'user-1',
+              contactId: 'contact-1',
+              role: 'OWNER' as const,
+              status: 'ACTIVE' as const,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              user: {
+                id: 'user-1',
+                name: 'John Doe',
+                email: 'john@example.com',
+                phone: '+14155552671',
+                emailVerified: true,
+                emailVerifiedAt: new Date(),
+                phoneVerified: true,
+                phoneVerifiedAt: new Date(),
+                defaultTimezone: timezone,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+                lastLoginAt: new Date(),
+              },
+              contact: {
+                id: 'contact-1',
+                name: 'Jane Doe',
+                email: 'jane@example.com',
+                phone: '+14155552672',
+                timezone: timezone,
+                photoUrl: null,
+                locked: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+                events: [
+                  {
+                    id: 'event-1',
+                    contactId: 'contact-1',
+                    type: 'BIRTHDAY' as const,
+                    title: null,
+                    date: futureDate,
+                    yearKnown: true,
+                    repeat: true,
+                    notes: null,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    deletedAt: null,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ] as any)
+
+    vi.mocked(db.suppression.findUnique).mockResolvedValue(null)
+    vi.mocked(db.scheduledSend.upsert).mockResolvedValue({} as any)
+
+    await scheduleUpcomingReminders()
+
+    const upsertArg = vi.mocked(db.scheduledSend.upsert).mock.calls[0][0]
+    const createCall = upsertArg.create
+    const expectedDueAt = Temporal.ZonedDateTime.from({
+      year: futureDate.getFullYear(),
+      month: futureDate.getMonth() + 1,
+      day: futureDate.getDate(),
+      hour: 9,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+      timeZone: timezone,
+      calendar: 'iso8601',
+    })
+      .add({ days: offset })
+      .toInstant().epochMilliseconds
+
+    expect(createCall.dueAtUtc.getTime()).toBe(expectedDueAt)
+  })
 
     it('should skip suppressed recipients', async () => {
       const today = startOfDay(new Date())
@@ -529,6 +640,115 @@ describe('Reminder Scheduler', () => {
       expect(result.totalRetrying).toBe(2)
       expect(result.recentSends).toEqual([])
     })
+  })
+
+  it('honors rule sendHour and timezone when computing dueAt', async () => {
+    const today = startOfDay(new Date())
+    const futureDate = addDays(today, 7)
+    const sendHour = 15
+    const timezone = 'America/Los_Angeles'
+
+    vi.mocked(db.reminderRule.findMany).mockResolvedValue([
+      {
+        id: 'rule-1',
+        groupId: 'group-1',
+        offsets: [0],
+        channels: { '0': ['EMAIL'] },
+        sendHour,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        group: {
+          id: 'group-1',
+          name: 'Test Group',
+          type: 'PERSONAL' as const,
+          ownerId: 'user-1',
+          defaultTimezone: 'UTC',
+          quietHours: null,
+          leapDayPolicy: 'FEB_28',
+          maxEventsPerMember: null,
+          remindersEnabled: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+          memberships: [
+            {
+              id: 'membership-1',
+              groupId: 'group-1',
+              userId: 'user-1',
+              contactId: 'contact-1',
+              role: 'OWNER' as const,
+              status: 'ACTIVE' as const,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              user: {
+                id: 'user-1',
+                name: 'John Doe',
+                email: 'john@example.com',
+                phone: '+14155552671',
+                emailVerified: true,
+                emailVerifiedAt: new Date(),
+                phoneVerified: true,
+                phoneVerifiedAt: new Date(),
+                defaultTimezone: timezone,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+                lastLoginAt: new Date(),
+              },
+              contact: {
+                id: 'contact-1',
+                name: 'Jane Doe',
+                email: 'jane@example.com',
+                phone: '+14155552672',
+                timezone,
+                photoUrl: null,
+                locked: false,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                deletedAt: null,
+                events: [
+                  {
+                    id: 'event-1',
+                    contactId: 'contact-1',
+                    type: 'BIRTHDAY' as const,
+                    title: null,
+                    date: futureDate,
+                    yearKnown: true,
+                    repeat: true,
+                    notes: null,
+                    createdAt: new Date(),
+                    updatedAt: new Date(),
+                    deletedAt: null,
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    ] as any)
+
+    vi.mocked(db.suppression.findUnique).mockResolvedValue(null)
+    vi.mocked(db.scheduledSend.upsert).mockResolvedValue({} as any)
+
+    await scheduleUpcomingReminders()
+
+    const upsertArg = vi.mocked(db.scheduledSend.upsert).mock.calls[0][0]
+    const dueAt = upsertArg.create.dueAtUtc
+    const zoned = Temporal.ZonedDateTime.from({
+      year: futureDate.getFullYear(),
+      month: futureDate.getMonth() + 1,
+      day: futureDate.getDate(),
+      hour: sendHour,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+      timeZone: timezone,
+      calendar: 'iso8601',
+    })
+    const expected = new Date(zoned.toInstant().epochMilliseconds)
+
+    expect(dueAt?.getTime()).toBe(expected.getTime())
   })
 })
 

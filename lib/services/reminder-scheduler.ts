@@ -293,11 +293,13 @@ export async function scheduleUpcomingReminders(): Promise<{
                   })
                 }
 
-                await db.scheduledSend.upsert({
+                  await db.scheduledSend.upsert({
                   where: { idempotencyKey },
                   create: {
                     eventId: event.id,
                     recipientUserId: recipient.userId,
+                      recipientGroupName: rule.group.name,
+                      recipientTimezone: recipient.timezone,
                     targetDate: nextOccurrence,
                     offset,
                     channel,
