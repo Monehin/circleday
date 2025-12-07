@@ -8,6 +8,7 @@
     "dev:next": "next dev",
     "dev:worker": "tsx scripts/temporal-worker.ts",
     "dev:all": "npm run temporal:start && npm run dev",
+    "seed:demo": "tsx prisma/seeds/group-types-demo.ts",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",

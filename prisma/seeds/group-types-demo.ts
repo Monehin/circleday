@@ -4,10 +4,28 @@
  * Run with: npx tsx prisma/seeds/group-types-demo.ts
  */
 
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient, ChannelType } from '@prisma/client'
 import { addDays } from 'date-fns'
 
 const db = new PrismaClient()
+
+export function generateDailyQaEvents(
+  contacts: { id: string }[],
+  today: Date = new Date()
+) {
+  const events = []
+  for (let i = 0; i < contacts.length; i++) {
+    const contact = contacts[i]
+    if (!contact?.id) continue
+    const eventDate = addDays(today, i + 1) // start tomorrow
+    events.push({
+      contactId: contact.id,
+      title: `QA Daily Check ${i + 1}`,
+      date: new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate()),
+    })
+  }
+  return events
+}
 
 async function main() {
   console.log('🌱 Starting Group Types Demo Seed...\n')
@@ -632,6 +650,43 @@ async function main() {
   console.log(`             • Jamie does NOT get reminded of their own birthday\n`)
 
   // ============================================================================
+  // SCENARIO 5: QA Daily Check (staggered events over next 7 days)
+  // Use existing contacts to ensure daily reminders land across the next week.
+  // ============================================================================
+  console.log('🧪 Scenario 5: QA Daily Check (7-day stagger)')
+  const today = new Date()
+  const dailyContacts = [
+    johnContact,
+    emilyContact,
+    mikeContact,
+    dadSmithContact,
+    momSmithContact,
+    alexSmithContact,
+    jamieSmithContact,
+  ]
+
+  const qaEvents = generateDailyQaEvents(
+    dailyContacts.map(c => ({ id: c?.id })).filter(Boolean) as { id: string }[],
+    today
+  )
+
+  for (const evt of qaEvents) {
+    await db.event.create({
+      data: {
+        contactId: evt.contactId,
+        type: 'CUSTOM',
+        title: evt.title,
+        date: evt.date,
+        yearKnown: true,
+        repeat: true,
+        notes: 'Synthetic daily event to verify scheduling/notifications',
+      },
+    })
+  }
+
+  console.log(`   ✓ Added ${qaEvents.length} QA events staggered over the next 7 days`)
+
+  // ============================================================================
   // SCENARIO 3: PERSONAL Group - Marketing Dept (HR tracks department)
   // ============================================================================
   console.log('💼 Scenario 3: PERSONAL Group - Marketing Department')
@@ -678,7 +733,7 @@ async function main() {
       ownerId: lisaHR.id,
       defaultTimezone: 'America/Chicago',
       maxEventsPerMember: 3,
-      remindersEnabled: true,
+      remindersEnabled: false, // paused to demo the toggle / Temporal control
     },
   })
 
@@ -751,6 +806,23 @@ async function main() {
       contactId: kateContact.id,
       role: 'MEMBER',
     },
+  })
+
+  // Seed a suppression to exercise suppression coverage in dashboards
+  await db.suppression.createMany({
+    data: [
+      {
+        identifier: 'tom.sales@example.com',
+        channel: ChannelType.EMAIL,
+        reason: 'BOUNCE',
+      },
+      {
+        identifier: '+14155552001',
+        channel: ChannelType.SMS,
+        reason: 'STOP',
+      },
+    ],
+    skipDuplicates: true,
   })
 
   // Add Kate's birthday

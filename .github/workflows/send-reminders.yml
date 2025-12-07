@@ -1,0 +1,35 @@
+name: Send Reminders
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # run daily at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke send-reminders
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          max_attempts=3
+          attempt=1
+          status=0
+          while [ $attempt -le $max_attempts ]; do
+            echo "Send attempt $attempt"
+            if curl -fsS -X POST "$BASE_URL/api/cron/send-reminders" \
+              -H "Authorization: Bearer $CRON_SECRET"; then
+              status=0
+              echo "OK"
+              break
+            else
+              status=$?
+              echo "Attempt $attempt failed with status $status"
+              sleep 10
+            fi
+            attempt=$((attempt + 1))
+          done
+          echo "send.status=$status" >> $GITHUB_OUTPUT
+
