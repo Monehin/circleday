@@ -1,4 +1,6 @@
+import { format } from 'date-fns'
 import { getReminderStats } from '@/lib/actions/reminder-history'
+import { getGroupReminderHealth } from '@/lib/actions/reminder-health'
 import { Card } from '@/components/ui/card'
 
 interface ReminderStatsCardsProps {
@@ -6,7 +8,10 @@ interface ReminderStatsCardsProps {
 }
 
 export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
-  const result = await getReminderStats(groupId)
+  const [statsResult, healthResult] = await Promise.all([
+    getReminderStats(groupId),
+    getGroupReminderHealth(groupId),
+  ])
   const reconciliationUrl = new URL(
     '/api/metrics/reminders/reconciliation',
     process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
@@ -16,7 +21,7 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
   })
   const reconciliationJson = await reconciliationResponse.json()
 
-  if (!result.success || !result.stats) {
+  if (!statsResult.success || !statsResult.stats) {
     return (
       <Card className="p-6">
         <p className="text-sm text-muted-foreground">Failed to load statistics</p>
@@ -24,7 +29,7 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
     )
   }
 
-  const { stats } = result
+  const { stats } = statsResult
   const discrepancyCount =
     reconciliationJson?.success && Array.isArray(reconciliationJson.discrepancies)
       ? reconciliationJson.discrepancies.length
@@ -39,6 +44,13 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
           60 /
           60) || 24)}h`
       : 'All workflows healthy'
+
+  const healthDescription = healthResult.success
+    ? `Last reconcile ${format(
+        new Date(healthResult.health.reconciliation.windowEnd),
+        'Pp'
+      )} (${healthResult.health.reconciliation.discrepancyCount} issues)`
+    : healthResult.error
 
   const statCards = [
     {
@@ -70,6 +82,16 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
       value: `${stats.timezoneDriftMinutes.toFixed(1)} min`,
       icon: '⏱️',
       description: 'Average drift from preferred send time',
+    },
+    {
+      label: 'Reminders status',
+      value: healthResult.success
+        ? healthResult.health.remindersEnabled
+          ? 'Enabled'
+          : 'Paused'
+        : 'Unknown',
+      icon: healthResult.success && healthResult.health.remindersEnabled ? '🚀' : '⏸️',
+      description: healthDescription,
     },
     {
       label: 'Temporal Reconciliation',

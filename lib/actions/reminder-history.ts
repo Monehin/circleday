@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth/config'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { startOfDay, endOfDay, subDays } from 'date-fns'
+import { ensureGroupAccess } from '@/lib/actions/group-access'
 import { getReminderMetrics } from '@/lib/services/reminder-sender'
 
 /**
@@ -21,31 +22,12 @@ export async function getReminderHistory(params: {
   offset?: number
 }) {
   try {
-    // Authenticate user
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    })
+    const access = await ensureGroupAccess(params.groupId)
 
-    if (!session) {
+    if (!access.success) {
       return {
         success: false,
-        error: 'Unauthorized',
-      }
-    }
-
-    // Check if user is a member of the group
-    const membership = await db.membership.findFirst({
-      where: {
-        groupId: params.groupId,
-        userId: session.user.id,
-        status: 'ACTIVE',
-      },
-    })
-
-    if (!membership) {
-      return {
-        success: false,
-        error: 'You are not a member of this group',
+        error: access.error,
       }
     }
 
@@ -129,31 +111,12 @@ export async function getReminderHistory(params: {
  */
 export async function getReminderStats(groupId: string) {
   try {
-    // Authenticate user
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    })
+    const access = await ensureGroupAccess(groupId)
 
-    if (!session) {
+    if (!access.success) {
       return {
         success: false,
-        error: 'Unauthorized',
-      }
-    }
-
-    // Check if user is a member of the group
-    const membership = await db.membership.findFirst({
-      where: {
-        groupId,
-        userId: session.user.id,
-        status: 'ACTIVE',
-      },
-    })
-
-    if (!membership) {
-      return {
-        success: false,
-        error: 'You are not a member of this group',
+        error: access.error,
       }
     }
 

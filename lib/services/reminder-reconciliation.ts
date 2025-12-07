@@ -15,6 +15,7 @@ export type ReconcileOptions = {
   limit?: number
   windowHours?: number
   statuses?: SendStatus[]
+  groupId?: string
 }
 
 /**
@@ -24,20 +25,35 @@ export async function reconcileScheduledSends(options: ReconcileOptions = {}) {
   const limit = options.limit ?? 100
   const windowHours = options.windowHours ?? 48
   const statuses = options.statuses ?? ['PENDING', 'QUEUED', 'FAILED']
+  const groupId = options.groupId
 
   const now = new Date()
   const windowStart = addHours(now, -windowHours)
 
-  const scheduledSends = await db.scheduledSend.findMany({
-    where: {
-      dueAtUtc: {
-        gte: windowStart,
-        lte: now,
-      },
-      status: {
-        in: statuses,
-      },
+  const where: any = {
+    dueAtUtc: {
+      gte: windowStart,
+      lte: now,
     },
+    status: {
+      in: statuses,
+    },
+  }
+
+  if (groupId) {
+    where.event = {
+      contact: {
+        memberships: {
+          some: {
+            groupId,
+          },
+        },
+      },
+    }
+  }
+
+  const scheduledSends = await db.scheduledSend.findMany({
+    where,
     orderBy: {
       dueAtUtc: 'asc',
     },
