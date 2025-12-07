@@ -4,25 +4,27 @@
 // Force dynamic rendering for personalized content
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useSession } from '@/lib/auth/client'
 import { DashboardHeader } from '@/components/dashboard/dashboard-header'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { PageLoader } from '@/components/ui/loader'
-import { 
-  Breadcrumb, 
-  BreadcrumbItem, 
-  BreadcrumbLink, 
-  BreadcrumbList, 
-  BreadcrumbPage, 
-  BreadcrumbSeparator 
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { getReminderRules, deleteReminderRule, type ReminderRuleListItem } from '@/lib/actions/reminder-rules'
 import { getGroupById, toggleGroupReminders } from '@/lib/actions/groups'
 import { toast } from 'sonner'
 import { AddReminderRuleModal } from '@/components/dashboard/add-reminder-rule-modal'
+import { format } from 'date-fns'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -45,6 +47,8 @@ export default function GroupRemindersPage() {
   const [isDeleting, setIsDeleting] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [isTogglingReminders, setIsTogglingReminders] = useState(false)
+  const [health, setHealth] = useState<any>(null)
+  const [healthLoading, setHealthLoading] = useState(false)
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -57,6 +61,12 @@ export default function GroupRemindersPage() {
       loadData()
     }
   }, [session, groupId])
+
+  useEffect(() => {
+    if (groupId) {
+      loadHealth()
+    }
+  }, [groupId])
 
   const loadData = async () => {
     setIsLoading(true)
@@ -85,6 +95,24 @@ export default function GroupRemindersPage() {
     }
   }
 
+  const loadHealth = async () => {
+    setHealthLoading(true)
+    try {
+      const response = await fetch(`/api/groups/${groupId}/health`, {
+        cache: 'no-store',
+      })
+      if (!response.ok) {
+        throw new Error('Failed to load reliability metrics')
+      }
+      const data = await response.json()
+      setHealth(data)
+    } catch (error) {
+      console.error('Failed to load reliability health:', error)
+    } finally {
+      setHealthLoading(false)
+    }
+  }
+
   const handleToggleReminders = async () => {
     if (!group) return
 
@@ -94,6 +122,7 @@ export default function GroupRemindersPage() {
       if (result.success) {
         setGroup({ ...group, remindersEnabled: result.remindersEnabled })
         toast.success(`Reminders ${result.remindersEnabled ? 'enabled' : 'disabled'}`)
+        loadHealth()
       } else {
         toast.error(result.error || 'Failed to toggle reminders')
       }
@@ -236,6 +265,66 @@ export default function GroupRemindersPage() {
                     No rules set
                   </div>
                 )}
+              </div>
+            </Card>
+          </motion.div>
+        )}
+
+        {(health && health.success) && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            transition={{ delay: 0.2 }}
+            className="mb-8"
+          >
+            <Card className="p-6 border-border/50 shadow-lifted space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Temporal Reliability</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Insights from the latest reconciliation window & send rates
+                  </p>
+                </div>
+                <Link
+                  href={`/api/metrics/reminders/reconciliation?groupId=${groupId}`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  View reconciliation metrics
+                </Link>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Last reconcile</p>
+                  <p className="text-base font-semibold text-foreground">
+                    {format(
+                      new Date(health.health.reconciliation.windowEnd),
+                      'Pp'
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {health.health.reconciliation.discrepancyCount} issue(s)
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Engagement (7d)</p>
+                  <p className="text-base font-semibold text-foreground">
+                    {health.health.engagement?.counts.SENT || 0} sent
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {health.health.engagement?.counts.FAILED || 0} failed
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Suppressed</p>
+                  <p className="text-base font-semibold text-foreground">
+                    {health.health.suppression?.suppressed || 0} /{' '}
+                    {health.health.suppression?.totalRecipients || 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {health.health.suppression?.percentage || 0}% blocked
+                  </p>
+                </div>
               </div>
             </Card>
           </motion.div>

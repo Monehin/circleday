@@ -28,6 +28,11 @@ type HealthResponse =
         since: Date
         counts: Record<string, number>
       }
+      suppression?: {
+        totalRecipients: number
+        suppressed: number
+        percentage: number
+      }
     }
     }
   | {
@@ -121,6 +126,36 @@ export async function getGroupReminderHealth(groupId: string): Promise<HealthRes
     engagementCounts[group.status] = group._count.id
   })
 
+  const memberships = await db.membership.findMany({
+    where: {
+      groupId,
+      status: 'ACTIVE',
+    },
+    include: {
+      user: true,
+    },
+  })
+
+  const identifiers = Array.from(
+    new Set(
+      memberships.flatMap(m => {
+        const email = m.user?.email?.toLowerCase()
+        const phone = m.user?.phone?.replace(/\D/g, '')
+        return [email, phone].filter(Boolean) as string[]
+      })
+    )
+  )
+
+  const suppressionCount = identifiers.length
+    ? await db.suppression.count({
+        where: {
+          identifier: {
+            in: identifiers,
+          },
+        },
+      })
+    : 0
+
   return {
     success: true,
     health: {
@@ -145,6 +180,13 @@ export async function getGroupReminderHealth(groupId: string): Promise<HealthRes
       engagement: {
         since: pastWeek,
         counts: engagementCounts,
+      },
+      suppression: {
+        totalRecipients: identifiers.length,
+        suppressed: suppressionCount,
+        percentage: identifiers.length
+          ? Math.round((suppressionCount / identifiers.length) * 100)
+          : 0,
       },
     },
   }

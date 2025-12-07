@@ -6,10 +6,13 @@ import { reconcileScheduledSends } from '@/lib/services/reminder-reconciliation'
  */
 export async function GET(request: NextRequest) {
   try {
-    const { limit, windowHours } = Object.fromEntries(request.nextUrl.searchParams.entries())
+    const { limit, windowHours, groupId } = Object.fromEntries(
+      request.nextUrl.searchParams.entries()
+    )
     const result = await reconcileScheduledSends({
       limit: limit ? Number(limit) : 20,
       windowHours: windowHours ? Number(windowHours) : 24,
+      groupId,
     })
 
     return NextResponse.json({

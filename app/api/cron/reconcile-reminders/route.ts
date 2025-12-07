@@ -15,10 +15,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { limit, windowHours } = Object.fromEntries(request.nextUrl.searchParams.entries())
+    const { limit, windowHours, groupId } = Object.fromEntries(
+      request.nextUrl.searchParams.entries()
+    )
     const result = await reconcileScheduledSends({
       limit: limit ? Number(limit) : undefined,
       windowHours: windowHours ? Number(windowHours) : undefined,
+      groupId,
     })
 
     if (result.discrepancies.length > 0) {
