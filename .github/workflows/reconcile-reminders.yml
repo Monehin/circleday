@@ -1,0 +1,34 @@
+name: Reconcile Reminders
+
+on:
+  schedule:
+    - cron: '0 6 * * *' # run daily at 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke reconciliation
+        run: |
+          BASE_URL="${{ secrets.BASE_URL }}"
+          CRON_SECRET="${{ secrets.CRON_SECRET }}"
+          max_attempts=3
+          attempt=1
+          status=0
+          while [ $attempt -le $max_attempts ]; do
+            echo "Reconciliation attempt $attempt"
+            if curl -fsS -X POST "$BASE_URL/api/cron/reconcile-reminders?limit=100&windowHours=24" \
+              -H "Authorization: Bearer $CRON_SECRET"; then
+              status=0
+              echo "OK"
+              break
+            else
+              status=$?
+              echo "Attempt $attempt failed with status $status"
+              sleep 10
+            fi
+            attempt=$((attempt + 1))
+          done
+          echo "reconcile.status=$status" >> $GITHUB_OUTPUT
+

@@ -1,0 +1,14 @@
+{
+  "overrides": [
+    {
+      "files": ["README.md"],
+      "rules": {
+        "MD031": false,
+        "MD032": false,
+        "MD040": false,
+        "MD022": false
+      }
+    }
+  ]
+}
+

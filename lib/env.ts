@@ -19,6 +19,9 @@ const envSchema = z.object({
   // Upstash Redis (optional for development, required for production)
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().optional(),
+
+  // Temporal Web UI (optional for linking alerts)
+  TEMPORAL_UI_URL: z.string().url().optional(),
   
   // Feature flags
   ENABLE_SMS: z.string().default('false'),

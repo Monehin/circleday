@@ -60,6 +60,10 @@ npm run dev
 
 Visit `http://localhost:3000`
 
+<!-- markdownlint-disable MD031 MD032 MD040 MD022 -->
+
+<!-- markdownlint-disable-file MD031 MD032 MD040 MD022 -->
+
 ## Configuration
 
 ### Environment Variables
@@ -185,6 +189,12 @@ npm run test:all
 - Full user flows (E2E)
 
 ## Deployment
+
+### Automated Reconciliation
+
+- A GitHub Actions workflow (`.github/workflows/reconcile-reminders.yml`) runs every morning at 06:00 UTC to invoke `/api/cron/reconcile-reminders`, analyze Temporal vs. `ScheduledSend`, and surface discrepancies.  
+- Alerts post to Slack (and optionally other channels) with workflow links; failures are automatically retried up to 3 times per run.  
+- Add `CRON_SECRET`, `BASE_URL`, `REMINDER_RECONCILIATION_SLACK_WEBHOOK`, and `TEMPORAL_UI_URL` to your environment so the job can authenticate and generate links.  
 
 ### Architecture
 

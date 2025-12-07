@@ -40,6 +40,19 @@ export async function POST(request: NextRequest) {
             },
             body: JSON.stringify({
               text: `Reminder reconciliation detected ${result.discrepancies.length} issue(s) between ScheduledSend and Temporal workflows (<${request.nextUrl.origin}/api/metrics/reminders/reconciliation|view latest>).`,
+              attachments: result.discrepancies.slice(0, 3).map(d => {
+                const temporalUiBase = process.env.TEMPORAL_UI_URL || 'http://localhost:8080'
+                const namespace = process.env.TEMPORAL_NAMESPACE || 'default'
+                const workflowUrl = `${temporalUiBase}/#/namespaces/${encodeURIComponent(
+                  namespace
+                )}/workflows?workflowId=reminder-${encodeURIComponent(d.idempotencyKey)}`
+
+                return {
+                  color: d.type === 'workflow-error' ? '#E53E3E' : '#D69E2E',
+                  title: `${d.type} (${d.scheduledSendId})`,
+                  text: `Workflow: <${workflowUrl}|reminder-${d.idempotencyKey}>\nDetails: ${d.details}`,
+                }
+              }),
             }),
           })
           console.log('✅ Sent reconciliation Slack alert')
