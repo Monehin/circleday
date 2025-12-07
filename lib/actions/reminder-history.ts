@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth/config'
 import { headers } from 'next/headers'
 import { z } from 'zod'
 import { startOfDay, endOfDay, subDays } from 'date-fns'
+import { getReminderMetrics } from '@/lib/services/reminder-sender'
 
 /**
  * Get reminder history for a group
@@ -232,6 +233,8 @@ export async function getReminderStats(groupId: string) {
       }),
     ])
 
+    const { averageDriftMinutes } = await getReminderMetrics()
+
     // Calculate success rate
     const successRate =
       totalSent + totalFailed > 0
@@ -248,6 +251,7 @@ export async function getReminderStats(groupId: string) {
         totalFailed,
         successRate,
         recentActivity,
+        timezoneDriftMinutes: Number(averageDriftMinutes.toFixed(1)),
       },
     }
   } catch (error) {

@@ -66,6 +66,12 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
       description: 'Delivery success rate',
     },
     {
+      label: 'Avg Drift',
+      value: `${stats.timezoneDriftMinutes.toFixed(1)} min`,
+      icon: '⏱️',
+      description: 'Average drift from preferred send time',
+    },
+    {
       label: 'Temporal Reconciliation',
       value: discrepancyCount,
       icon: discrepancyCount ? '⚠️' : '✅',
