@@ -12,14 +12,38 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
     getReminderStats(groupId),
     getGroupReminderHealth(groupId),
   ])
-  const reconciliationUrl = new URL(
-    '/api/metrics/reminders/reconciliation',
-    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  )
-  const reconciliationResponse = await fetch(reconciliationUrl, {
-    cache: 'no-store',
-  })
-  const reconciliationJson = await reconciliationResponse.json()
+  // Prefer reconciliation info from health; fallback to metrics endpoint only if needed
+  let reconciliationJson: any =
+    healthResult.success && healthResult.health.reconciliation
+      ? {
+          success: true,
+          discrepancies: Array.from(
+            { length: healthResult.health.reconciliation.discrepancyCount ?? 0 },
+            (_, i) => i
+          ),
+          windowStart: healthResult.health.reconciliation.windowStart,
+          windowEnd: healthResult.health.reconciliation.windowEnd,
+        }
+      : { success: false, discrepancies: [], windowStart: null, windowEnd: null }
+
+  if (!reconciliationJson.success) {
+    const reconciliationUrl = new URL(
+      '/api/metrics/reminders/reconciliation',
+      process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    )
+    try {
+      const reconciliationResponse = await fetch(reconciliationUrl, {
+        cache: 'no-store',
+      })
+      if (reconciliationResponse.ok) {
+        reconciliationJson = await reconciliationResponse.json()
+      } else {
+        console.warn('Reconciliation metrics request failed', reconciliationResponse.status)
+      }
+    } catch (error) {
+      console.warn('Reconciliation metrics request errored', error)
+    }
+  }
 
   if (!statsResult.success || !statsResult.stats) {
     return (
@@ -109,7 +133,9 @@ export async function ReminderStatsCards({ groupId }: ReminderStatsCardsProps) {
       label: 'Temporal Reconciliation',
       value: discrepancyCount,
       icon: discrepancyCount ? '⚠️' : '✅',
-      description: reconciliationDescription,
+      description: reconciliationJson.success
+        ? reconciliationDescription
+        : 'Metrics unavailable',
     },
   ]
 
