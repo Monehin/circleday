@@ -49,6 +49,8 @@ export default function GroupRemindersPage() {
   const [isTogglingReminders, setIsTogglingReminders] = useState(false)
   const [health, setHealth] = useState<any>(null)
   const [healthLoading, setHealthLoading] = useState(false)
+  const [inviteAnalytics, setInviteAnalytics] = useState<any>(null)
+  const [inviteLoading, setInviteLoading] = useState(false)
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -65,8 +67,27 @@ export default function GroupRemindersPage() {
   useEffect(() => {
     if (groupId) {
       loadHealth()
+      loadInviteAnalytics()
     }
   }, [groupId])
+
+  const loadInviteAnalytics = async () => {
+    setInviteLoading(true)
+    try {
+      const response = await fetch(`/api/groups/${groupId}/invites/analytics`, {
+        cache: 'no-store',
+      })
+      if (!response.ok) {
+        throw new Error('Failed to load invite analytics')
+      }
+      const data = await response.json()
+      setInviteAnalytics(data)
+    } catch (error) {
+      console.error('Failed to load invite analytics:', error)
+    } finally {
+      setInviteLoading(false)
+    }
+  }
 
   const loadData = async () => {
     setIsLoading(true)
@@ -323,6 +344,62 @@ export default function GroupRemindersPage() {
                   </p>
                   <p className="text-xs text-muted-foreground">
                     {health.health.suppression?.percentage || 0}% blocked
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </motion.div>
+        )}
+        {(inviteAnalytics && inviteAnalytics.success) && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={fadeUp}
+            transition={{ delay: 0.3 }}
+            className="mb-8"
+          >
+            <Card className="p-6 border-border/50 shadow-lifted space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground">Invite Link Analytics</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Track how many invite tokens convert and how long members take to add events
+                  </p>
+                </div>
+                <Link
+                  href={`/groups/${groupId}?tab=invites`}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Manage invite links
+                </Link>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Tokens created</p>
+                  <p className="text-base font-semibold text-foreground">
+                    {inviteAnalytics.stats.totalTokens}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {inviteAnalytics.stats.pendingTokens} pending
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Conversion</p>
+                  <p className="text-base font-semibold text-foreground">
+                    {inviteAnalytics.stats.conversionRate}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {inviteAnalytics.stats.usedTokens} used / {inviteAnalytics.stats.expiredTokens}{' '}
+                    expired
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Avg usage delay</p>
+                  <p className="text-base font-semibold text-foreground">
+                    {inviteAnalytics.stats.avgUseDelayMinutes} min
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    since creation
                   </p>
                 </div>
               </div>

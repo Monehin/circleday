@@ -1,0 +1,35 @@
+name: Invite Analytics Alerts
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  alert:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke invite analytics alert
+        env:
+          BASE_URL: ${{ secrets.BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          max_attempts=3
+          attempt=1
+          status=0
+          while [ $attempt -le $max_attempts ]; do
+            echo "Attempt $attempt"
+            if curl -fsS -X POST "$BASE_URL/api/cron/invite-analytics/alerts" \
+              -H "Authorization: Bearer $CRON_SECRET"; then
+              status=0
+              echo "Alert delivered"
+              break
+            else
+              status=$?
+              echo "Attempt $attempt failed with status $status"
+              sleep 10
+            fi
+            attempt=$((attempt + 1))
+          done
+          echo "invite_alert.status=$status" >> $GITHUB_OUTPUT
+

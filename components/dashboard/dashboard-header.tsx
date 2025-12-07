@@ -76,6 +76,12 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
               Events
             </Link>
             <Link 
+              href="/admin/analytics" 
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Admin
+            </Link>
+            <Link 
               href="/settings" 
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -127,6 +133,13 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
                         onClick={() => setShowMenu(false)}
                       >
                         Settings
+                      </Link>
+                      <Link
+                        href="/admin/analytics"
+                        className="block px-4 py-2 text-sm text-foreground hover:bg-accent/50 transition-colors"
+                        onClick={() => setShowMenu(false)}
+                      >
+                        Admin
                       </Link>
                       <hr className="my-1 border-border" />
                       <button
