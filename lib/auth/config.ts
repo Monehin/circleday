@@ -24,7 +24,7 @@ export const auth = betterAuth({
   ],
   
   session: {
-    expiresIn: 60 * 60 * 24 * 30, // 30 days idle timeout
+    expiresIn: 60 * 60 * 24 * 2, // 2 days idle timeout
     updateAge: 60 * 60 * 24, // Update session every 24 hours
     cookieCache: {
       enabled: true,
