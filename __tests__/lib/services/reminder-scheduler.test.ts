@@ -13,6 +13,11 @@ vi.mock('@/temporal/client', () => ({
   getTemporalClient: vi.fn().mockResolvedValue({
     workflow: {
       start: vi.fn(),
+      list: vi.fn().mockReturnValue({
+        async *[Symbol.asyncIterator]() {
+          // no active workflows for preflight in tests
+        },
+      }),
     },
   }),
 }))

@@ -299,7 +299,7 @@ export default function GroupRemindersPage() {
           </motion.div>
         )}
 
-        {(health && health.success) && (
+        {(healthLoading || (health && health.success)) && (
           <motion.div
             initial="hidden"
             animate="visible"
@@ -322,39 +322,60 @@ export default function GroupRemindersPage() {
                   View reconciliation metrics
                 </Link>
               </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Last reconcile</p>
-                  <p className="text-base font-semibold text-foreground">
-                    {format(
-                      new Date(health.health.reconciliation.windowEnd),
-                      'Pp'
-                    )}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {health.health.reconciliation.discrepancyCount} issue(s)
-                  </p>
+              {healthLoading ? (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="h-16 rounded-md bg-muted animate-pulse" />
+                  ))}
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Engagement (7d)</p>
-                  <p className="text-base font-semibold text-foreground">
-                    {health.health.engagement?.counts.SENT || 0} sent
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {health.health.engagement?.counts.FAILED || 0} failed
-                  </p>
+              ) : (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Last reconcile</p>
+                    <p className="text-base font-semibold text-foreground">
+                      {health?.health?.reconciliation?.windowEnd
+                        ? format(new Date(health.health.reconciliation.windowEnd), 'Pp')
+                        : '—'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {health?.health?.reconciliation?.discrepancyCount ?? 0} issue(s)
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Engagement (7d)</p>
+                    <p className="text-base font-semibold text-foreground">
+                      {health?.health?.engagement?.counts?.SENT || 0} sent
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {health?.health?.engagement?.counts?.FAILED || 0} failed
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Suppressed</p>
+                    <p className="text-base font-semibold text-foreground">
+                      {health?.health?.suppression?.suppressed || 0} /{' '}
+                      {health?.health?.suppression?.totalRecipients || 0}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {health?.health?.suppression?.percentage || 0}% blocked
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Latest scheduled send</p>
+                    <p className="text-base font-semibold text-foreground">
+                      {health?.health?.latestScheduledSend?.dueAtUtc
+                        ? `${format(new Date(health.health.latestScheduledSend.dueAtUtc), 'Pp')} (${health.health.latestScheduledSend.status})`
+                        : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Rate limit health</p>
+                    <p className="text-base font-semibold text-foreground">
+                      {health?.health?.rateLimitHealthy ? 'Healthy' : 'Unhealthy'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Suppressed</p>
-                  <p className="text-base font-semibold text-foreground">
-                    {health.health.suppression?.suppressed || 0} /{' '}
-                    {health.health.suppression?.totalRecipients || 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {health.health.suppression?.percentage || 0}% blocked
-                  </p>
-                </div>
-              </div>
+              )}
             </Card>
           </motion.div>
         )}

@@ -2,6 +2,8 @@ import { getAdminInviteAnalytics } from '@/lib/actions/admin-invite-analytics'
 
 const WEBHOOK = process.env.INVITE_ANALYTICS_SLACK_WEBHOOK
 const THRESHOLD = Number(process.env.INVITE_CONVERSION_ALERT_THRESHOLD) || 25
+const MIN_TOKENS = Number(process.env.INVITE_CONVERSION_MIN_TOKENS) || 5
+const TOP_N = Number(process.env.INVITE_CONVERSION_ALERT_TOP_N) || 3
 
 export async function alertLowInviteConversion() {
   const analytics = await getAdminInviteAnalytics()
@@ -9,10 +11,14 @@ export async function alertLowInviteConversion() {
     return { success: false, error: analytics.error }
   }
 
-  const lowGroups = (analytics.data ?? []).filter(group => {
-    const conversion = group.conversionRate ?? 0
-    return conversion < THRESHOLD && (group.totalTokens ?? 0) > 0
-  })
+  const lowGroups = (analytics.data ?? [])
+    .filter(group => {
+      const conversion = group.conversionRate ?? 0
+      const total = group.totalTokens ?? 0
+      return conversion < THRESHOLD && total >= MIN_TOKENS
+    })
+    .sort((a, b) => (a.conversionRate ?? 0) - (b.conversionRate ?? 0))
+    .slice(0, TOP_N)
 
   if (lowGroups.length === 0) {
     return { success: true, message: 'All groups above conversion threshold' }

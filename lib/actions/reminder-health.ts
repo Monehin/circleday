@@ -2,12 +2,14 @@ import { addDays } from 'date-fns'
 import { db } from '@/lib/db'
 import { ensureGroupAccess } from '@/lib/actions/group-access'
 import { reconcileScheduledSends } from '@/lib/services/reminder-reconciliation'
+import { checkRateLimitConnection } from '@/lib/rate-limit/health'
 
 type HealthResponse =
   | {
       success: true
     health: {
       remindersEnabled: boolean
+      rateLimitHealthy: boolean
       scheduledCounts: {
         total: number
         pending: number
@@ -99,6 +101,7 @@ export async function getGroupReminderHealth(
     windowHours: 24,
     limit: 50,
   })
+  const rateLimitHealthy = await checkRateLimitConnection()
   const pastWeek = addDays(new Date(), -7)
 
   const engagementGroups = await db.sendLog.groupBy({
@@ -163,6 +166,7 @@ export async function getGroupReminderHealth(
     success: true,
     health: {
       remindersEnabled: !!access.group?.remindersEnabled,
+      rateLimitHealthy,
       scheduledCounts: {
         total: totalScheduled,
         pending,
